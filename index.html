@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador BER 5G/6G</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Simulador de Tasa de Error de Bit (BER)</h1>
+        <h2>Para sistemas 5G, 5G Avanzado y 6G</h2>
+    </header>
+
+    <main>
+        <section id="parameters">
+            <h2>Parámetros de Simulación</h2>
+            <div class="param-group">
+                <label for="ebn0">Eb/N0 (dB):</label>
+                <input type="number" id="ebn0" value="10">
+            </div>
+            <div class="param-group">
+                <label for="modulation">Modulación:</label>
+                <select id="modulation">
+                    <option value="bpsk">BPSK</option>
+                    <option value="qpsk">QPSK</option>
+                    <option value="16qam">16-QAM</option>
+                    <option value="64qam">64-QAM</option>
+                </select>
+            </div>
+            <div class="param-group">
+                <label for="channel">Tipo de Canal:</label>
+                <select id="channel">
+                    <option value="awgn">AWGN</option>
+                    <option value="rayleigh">Rayleigh</option>
+                    <option value="rician">Rician</option>
+                </select>
+            </div>
+            <div class="param-group" id="rician-k-group" style="display: none;">
+                <label for="rician-k">Factor K Rician (dB):</label>
+                <input type="range" id="rician-k" min="0" max="20" value="10">
+                <span id="rician-k-value">10 dB</span>
+            </div>
+            <div class="param-group">
+                <label for="fec">Técnica de Control de Errores (FEC):</label>
+                <select id="fec">
+                    <option value="none">Ninguna</option>
+                    <option value="ldpc">LDPC</option>
+                    <option value="polar">Polar Codes</option>
+                </select>
+            </div>
+            <button id="simulateBtn">Simular</button>
+        </section>
+
+        <section id="results">
+            <h2>Resultados</h2>
+            <div id="output">
+                <p>BER: <span id="ber-result">N/A</span></p>
+                <h3>Comparación de Señal</h3>
+                <div class="signal-comparison">
+                    <div>
+                        <h4>Señal de Entrada (Bits)</h4>
+                        <pre id="input-signal"></pre>
+                    </div>
+                    <div>
+                        <h4>Señal de Salida (Bits)</h4>
+                        <pre id="output-signal"></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
