@@ -9,16 +9,32 @@
 <body>
     <header>
         <h1>Simulador de Tasa de Error de Bit (BER)</h1>
-        <h2>Para sistemas 5G, 5G Avanzado y 6G</h2>
+        <h2>Sistemas 5G, 5G Avanzado y 6G</h2>
     </header>
 
     <main>
         <section id="parameters">
             <h2>Parámetros de Simulación</h2>
+            
             <div class="param-group">
-                <label for="ebn0">Eb/N0 (dB):</label>
-                <input type="number" id="ebn0" value="10">
+                <label for="technology">Tecnología:</label>
+                <select id="technology">
+                    <option value="5g">5G</option>
+                    <option value="5g-advanced">5G Avanzado</option>
+                    <option value="6g">6G</option>
+                </select>
             </div>
+
+            <div class="param-group">
+                <label for="ebn0">Eb/N0 (dB): <span id="ebn0-value">10</span></label>
+                <input type="range" id="ebn0" min="0" max="30" value="10" step="0.5">
+            </div>
+
+            <div class="param-group">
+                <label for="data-rate">Velocidad de Datos (Mbps): <span id="data-rate-value">100</span></label>
+                <input type="range" id="data-rate" min="1" max="10000" value="100" step="1">
+            </div>
+
             <div class="param-group">
                 <label for="modulation">Modulación:</label>
                 <select id="modulation">
@@ -26,8 +42,10 @@
                     <option value="qpsk">QPSK</option>
                     <option value="16qam">16-QAM</option>
                     <option value="64qam">64-QAM</option>
+                    <option value="256qam">256-QAM</option>
                 </select>
             </div>
+
             <div class="param-group">
                 <label for="channel">Tipo de Canal:</label>
                 <select id="channel">
@@ -36,27 +54,131 @@
                     <option value="rician">Rician</option>
                 </select>
             </div>
+
             <div class="param-group" id="rician-k-group" style="display: none;">
-                <label for="rician-k">Factor K Rician (dB):</label>
-                <input type="range" id="rician-k" min="0" max="20" value="10">
-                <span id="rician-k-value">10 dB</span>
+                <label for="rician-k">Factor K Rician (dB): <span id="rician-k-value">10</span></label>
+                <input type="range" id="rician-k" min="0" max="20" value="10" step="0.5">
             </div>
+
+            <div class="param-group">
+                <label for="multiplexing">Multiplexación:</label>
+                <select id="multiplexing">
+                    <option value="ofdm">OFDM</option>
+                    <option value="ofdma">OFDMA</option>
+                    <option value="sc-fdma">SC-FDMA</option>
+                    <option value="noma">NOMA</option>
+                </select>
+            </div>
+
             <div class="param-group">
                 <label for="fec">Técnica de Control de Errores (FEC):</label>
                 <select id="fec">
                     <option value="none">Ninguna</option>
+                    <option value="hamming">Hamming (7,4)</option>
                     <option value="ldpc">LDPC</option>
                     <option value="polar">Polar Codes</option>
+                    <option value="turbo">Turbo Codes</option>
                 </select>
             </div>
+
             <button id="simulateBtn">Simular</button>
+            <button id="compareBtn" class="secondary-btn">Comparar Tecnologías</button>
         </section>
 
         <section id="results">
-            <h2>Resultados</h2>
-            <div id="output">
-                <p>BER: <span id="ber-result">N/A</span></p>
-                <h3>Comparación de Señal</h3>
+            <div class="tabs">
+                <button class="tab-button active" data-tab="results-tab">Resultados</button>
+                <button class="tab-button" data-tab="charts-tab">Gráficas</button>
+                <button class="tab-button" data-tab="comparison-tab">Comparación</button>
+                <button class="tab-button" data-tab="signal-tab">Señales</button>
+            </div>
+
+            <div id="results-tab" class="tab-content active">
+                <h2>Resultados de la Simulación</h2>
+                <div id="output">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <h4>BER Simulado</h4>
+                            <p class="metric-value" id="ber-simulated">N/A</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>BER Teórico</h4>
+                            <p class="metric-value" id="ber-theoretical">N/A</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Ganancia de Codificación</h4>
+                            <p class="metric-value" id="coding-gain">N/A</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Errores de Bit</h4>
+                            <p class="metric-value" id="bit-errors">N/A</p>
+                        </div>
+                    </div>
+
+                    <div class="params-table">
+                        <h3>Parámetros de la Simulación</h3>
+                        <table id="params-table">
+                            <tr><th>Parámetro</th><th>Valor</th></tr>
+                        </table>
+                    </div>
+
+                    <button id="exportBtn" class="secondary-btn">Exportar Resultados (JSON)</button>
+                </div>
+            </div>
+
+            <div id="charts-tab" class="tab-content">
+                <h2>Visualización Gráfica</h2>
+                <div class="chart-container">
+                    <h3>BER vs Eb/N0</h3>
+                    <canvas id="berChart" width="800" height="400"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Diagrama de Constelación</h3>
+                    <canvas id="constellationChart" width="800" height="400"></canvas>
+                </div>
+            </div>
+
+            <div id="comparison-tab" class="tab-content">
+                <h2>Tablas Comparativas</h2>
+                <div class="comparison-section">
+                    <h3>Comparación de Tecnologías</h3>
+                    <table id="tech-comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Tecnología</th>
+                                <th>BER Simulado</th>
+                                <th>BER Teórico</th>
+                                <th>Ganancia FEC</th>
+                                <th>Eficiencia</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tech-comparison-body">
+                            <tr><td colspan="5">Ejecute "Comparar Tecnologías" para ver resultados</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="comparison-section">
+                    <h3>Efectividad de Técnicas FEC</h3>
+                    <table id="fec-comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Técnica FEC</th>
+                                <th>BER sin FEC</th>
+                                <th>BER con FEC</th>
+                                <th>Mejora (%)</th>
+                                <th>Overhead</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fec-comparison-body">
+                            <tr><td colspan="5">Los datos se llenarán después de la simulación</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="signal-tab" class="tab-content">
+                <h2>Análisis de Señales</h2>
                 <div class="signal-comparison">
                     <div>
                         <h4>Señal de Entrada (Bits)</h4>
@@ -67,9 +189,17 @@
                         <pre id="output-signal"></pre>
                     </div>
                 </div>
+                <div id="signal-diff">
+                    <h4>Diferencias (Errores Detectados)</h4>
+                    <pre id="signal-errors"></pre>
+                </div>
             </div>
         </section>
     </main>
+
+    <footer>
+        <p>Simulador BER para Sistemas 5G/6G - Basado en IEEE 2024 y IEEE 2022</p>
+    </footer>
 
     <script src="script.js"></script>
 </body>
