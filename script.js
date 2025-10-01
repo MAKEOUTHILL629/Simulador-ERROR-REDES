@@ -24,28 +24,95 @@ function erfc(x) {
     return 1 - (sign * y);
 }
 
+// Variables globales para gráficas
+let berChart = null;
+let constellationChart = null;
+let simulationHistory = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Elementos del DOM ---
     const simulateBtn = document.getElementById('simulateBtn');
+    const compareBtn = document.getElementById('compareBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const technologySelect = document.getElementById('technology');
     const ebn0Input = document.getElementById('ebn0');
+    const ebn0ValueSpan = document.getElementById('ebn0-value');
+    const dataRateInput = document.getElementById('data-rate');
+    const dataRateValueSpan = document.getElementById('data-rate-value');
     const modulationSelect = document.getElementById('modulation');
     const channelSelect = document.getElementById('channel');
     const fecSelect = document.getElementById('fec');
+    const multiplexingSelect = document.getElementById('multiplexing');
     const ricianKGroup = document.getElementById('rician-k-group');
     const ricianKInput = document.getElementById('rician-k');
     const ricianKValueSpan = document.getElementById('rician-k-value');
-    const berResultSpan = document.getElementById('ber-result');
+    
+    // Results elements
+    const berSimulatedSpan = document.getElementById('ber-simulated');
+    const berTheoreticalSpan = document.getElementById('ber-theoretical');
+    const codingGainSpan = document.getElementById('coding-gain');
+    const bitErrorsSpan = document.getElementById('bit-errors');
     const inputSignalPre = document.getElementById('input-signal');
     const outputSignalPre = document.getElementById('output-signal');
+    const signalErrorsPre = document.getElementById('signal-errors');
+    const paramsTable = document.getElementById('params-table');
 
     // --- Event Listeners ---
     simulateBtn.addEventListener('click', runSimulation);
+    compareBtn.addEventListener('click', compareTechnologies);
+    exportBtn.addEventListener('click', exportResults);
+    
     channelSelect.addEventListener('change', () => {
         ricianKGroup.style.display = (channelSelect.value === 'rician') ? 'block' : 'none';
     });
-    ricianKInput.addEventListener('input', () => {
-        ricianKValueSpan.textContent = `${ricianKInput.value} dB`;
+    
+    ebn0Input.addEventListener('input', () => {
+        ebn0ValueSpan.textContent = ebn0Input.value;
     });
+    
+    dataRateInput.addEventListener('input', () => {
+        dataRateValueSpan.textContent = dataRateInput.value;
+    });
+    
+    ricianKInput.addEventListener('input', () => {
+        ricianKValueSpan.textContent = ricianKInput.value;
+    });
+
+    // Technology-specific defaults
+    technologySelect.addEventListener('change', () => {
+        const tech = technologySelect.value;
+        if (tech === '5g') {
+            modulationSelect.value = 'qpsk';
+            fecSelect.value = 'ldpc';
+        } else if (tech === '5g-advanced') {
+            modulationSelect.value = '64qam';
+            fecSelect.value = 'ldpc';
+        } else if (tech === '6g') {
+            modulationSelect.value = '256qam';
+            fecSelect.value = 'polar';
+        }
+    });
+
+    // Tab functionality
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.getAttribute('data-tab');
+            
+            // Remove active class from all buttons and contents
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Add active class to clicked button and target content
+            button.classList.add('active');
+            document.getElementById(targetTab).classList.add('active');
+        });
+    });
+
+    // Initialize charts
+    initializeCharts();
 
     // --- Constelaciones de Modulación (Normalizadas para Energía de Símbolo Promedio Es=1) ---
     const constellations = {
@@ -55,7 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
             '00': { i: -1 / Math.sqrt(2), q: -1 / Math.sqrt(2) }, '10': { i: 1 / Math.sqrt(2), q: -1 / Math.sqrt(2) }
         },
         '16qam': { /* Generado dinámicamente */ },
-        '64qam': { /* Generado dinámicamente */ }
+        '64qam': { /* Generado dinámicamente */ },
+        '256qam': { /* Generado dinámicamente */ }
     };
 
     function generateQAMConstellation(M, k) {
@@ -67,8 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Mapeo Gray (simplificado, para propósitos de simulación, no es un mapeo Gray perfecto)
-        // Un mapeo Gray real es más complejo de generar programáticamente.
         let constellation = {};
         for (let i = 0; i < M; i++) {
             const bitString = i.toString(2).padStart(k, '0');
@@ -87,13 +153,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     constellations['16qam'] = generateQAMConstellation(16, 4);
     constellations['64qam'] = generateQAMConstellation(64, 6);
+    constellations['256qam'] = generateQAMConstellation(256, 8);
 
-    // --- Lógica de Simulación Realista ---
+    // --- Initialize Charts ---
+    function initializeCharts() {
+        // Charts will be drawn on demand
+        drawEmptyBERChart();
+        drawEmptyConstellationChart();
+    }
+
+    function drawEmptyBERChart() {
+        const canvas = document.getElementById('berChart');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('Ejecute una simulación para ver las gráficas', canvas.width / 2, canvas.height / 2);
+    }
+
+    function drawEmptyConstellationChart() {
+        const canvas = document.getElementById('constellationChart');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('Ejecute una simulación para ver el diagrama de constelación', canvas.width / 2, canvas.height / 2);
+    }
+
+    // --- Lógica de Simulación ---
     function runSimulation() {
         const ebn0_db = parseFloat(ebn0Input.value);
+        const technology = technologySelect.value;
         const modulation = modulationSelect.value;
         const channel = channelSelect.value;
         const fec = fecSelect.value;
+        const multiplexing = multiplexingSelect.value;
+        const dataRate = parseFloat(dataRateInput.value);
         const k_factor_db = parseFloat(ricianKInput.value);
 
         const numBits = 2000;
@@ -101,10 +200,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Cadena de Simulación ---
         // 1. Codificación FEC (opcional)
-        const encodedBits = (fec !== 'none') ? hammingEncode(originalBits) : originalBits;
+        let encodedBits = originalBits;
+        let fecOverhead = 1.0;
+        
+        if (fec === 'hamming') {
+            encodedBits = hammingEncode(originalBits);
+            fecOverhead = 7/4; // Hamming (7,4)
+        } else if (fec === 'ldpc') {
+            encodedBits = ldpcEncode(originalBits);
+            fecOverhead = 2.0; // Rate 1/2
+        } else if (fec === 'polar') {
+            encodedBits = polarEncode(originalBits);
+            fecOverhead = 2.0; // Rate 1/2
+        } else if (fec === 'turbo') {
+            encodedBits = turboEncode(originalBits);
+            fecOverhead = 3.0; // Rate 1/3
+        }
 
         // 2. Modulación: Bits a Símbolos Complejos
         const { symbols, k } = modulate(encodedBits, modulation);
+        const originalSymbols = [...symbols];
 
         // 3. Canal: Aplicar desvanecimiento y añadir ruido
         const noisySymbols = addNoise(symbols, ebn0_db, k, channel, k_factor_db);
@@ -113,15 +228,62 @@ document.addEventListener('DOMContentLoaded', () => {
         const demodulatedBits = demodulate(noisySymbols, modulation);
 
         // 5. Decodificación FEC (opcional)
-        const decodedBits = (fec !== 'none') ? hammingDecode(demodulatedBits) : demodulatedBits;
+        let decodedBits = demodulatedBits;
+        
+        if (fec === 'hamming') {
+            decodedBits = hammingDecode(demodulatedBits);
+        } else if (fec === 'ldpc') {
+            decodedBits = ldpcDecode(demodulatedBits);
+        } else if (fec === 'polar') {
+            decodedBits = polarDecode(demodulatedBits);
+        } else if (fec === 'turbo') {
+            decodedBits = turboDecode(demodulatedBits);
+        }
 
         // 6. Comparación y Resultados
         const errors = compareBits(originalBits, decodedBits);
         const simulatedBer = errors / numBits;
-        // El BER teórico no tiene en cuenta el FEC, por lo que la comparación será reveladora.
         const theoreticalBer = calculateTheoreticalBer(ebn0_db, modulation, channel);
+        
+        // Calculate BER without FEC for comparison
+        const decodedBitsNoFec = (fec !== 'none') ? demodulate(noisySymbols, modulation).substring(0, numBits) : decodedBits;
+        const errorsNoFec = compareBits(originalBits, decodedBitsNoFec);
+        const berNoFec = errorsNoFec / numBits;
+        const codingGain = berNoFec > 0 ? 10 * Math.log10(berNoFec / Math.max(simulatedBer, 1e-10)) : 0;
 
-        displayResults(originalBits, decodedBits, theoreticalBer, simulatedBer);
+        // Calculate signal and noise power
+        const signalPower = 1.0; // Normalized
+        const noisePower = 1 / (Math.pow(10, ebn0_db / 10) * k);
+
+        // Store simulation results
+        const result = {
+            timestamp: new Date().toISOString(),
+            technology,
+            ebn0_db,
+            dataRate,
+            modulation,
+            channel,
+            fec,
+            multiplexing,
+            k_factor_db: channel === 'rician' ? k_factor_db : null,
+            simulatedBer,
+            theoreticalBer,
+            errors,
+            numBits,
+            codingGain,
+            fecOverhead,
+            signalPower,
+            noisePower,
+            snr: ebn0_db + 10 * Math.log10(k)
+        };
+
+        simulationHistory.push(result);
+
+        // Display results
+        displayResults(originalBits, decodedBits, result);
+        updateCharts(result, originalSymbols, noisySymbols);
+        updateParamsTable(result);
+        updateFECComparison(result, berNoFec);
     }
 
     function generateRandomBits(length) {
@@ -131,11 +293,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getBitsPerSymbol(modulation) {
-        if (modulation === 'bpsk') return 1;
-        if (modulation === 'qpsk') return 2;
-        if (modulation === '16qam') return 4;
-        if (modulation === '64qam') return 6;
-        return 0;
+        const map = {
+            'bpsk': 1, 'qpsk': 2, '16qam': 4, '64qam': 6, '256qam': 8
+        };
+        return map[modulation] || 0;
     }
 
     function modulate(bits, modulation) {
@@ -147,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < bits.length; i += k) {
             const chunk = bits.substring(i, i + k);
             if (constellation[chunk]) {
-                symbols.push(constellation[chunk]);
+                symbols.push({ ...constellation[chunk] });
             }
         }
         return { symbols, k };
@@ -155,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateGaussianNoise() {
         let u1 = 0, u2 = 0;
-        while (u1 === 0) u1 = Math.random(); // Prevenir log(0)
+        while (u1 === 0) u1 = Math.random();
         while (u2 === 0) u2 = Math.random();
         const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
         const z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
@@ -165,10 +326,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function addNoise(symbols, ebn0_db, k, channel, k_factor_db) {
         const ebn0_linear = Math.pow(10, ebn0_db / 10);
         const esn0_linear = ebn0_linear * k;
-        const n0 = 1 / esn0_linear; // Asumiendo Es = 1
+        const n0 = 1 / esn0_linear;
         const sigma = Math.sqrt(n0 / 2);
 
-        let fadedSymbols = symbols;
+        let fadedSymbols = symbols.map(s => ({ ...s }));
 
         if (channel === 'rayleigh') {
             fadedSymbols = symbols.map(s => {
@@ -179,10 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else if (channel === 'rician') {
             const K = Math.pow(10, k_factor_db / 10);
-            // Componente de línea de visión (LOS)
             const mu_i = Math.sqrt(K / (K + 1));
-            const mu_q = 0; // Se asume en el eje real sin pérdida de generalidad
-            // Varianza del componente disperso (NLOS)
+            const mu_q = 0;
             const sigma_h = Math.sqrt(1 / (2 * (K + 1)));
 
             fadedSymbols = symbols.map(s => {
@@ -222,7 +381,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function compareBits(input, output) {
         let errors = 0;
-        for (let i = 0; i < input.length; i++) {
+        const minLen = Math.min(input.length, output.length);
+        for (let i = 0; i < minLen; i++) {
             if (input[i] !== output[i]) {
                 errors++;
             }
@@ -230,21 +390,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return errors;
     }
 
-    // --- Lógica de Codificación de Canal (FEC) ---
-    // Implementación del código de Hamming (7,4) como un ejemplo de FEC real.
-    // Matriz generadora G = [I_k | P] donde P es la matriz de paridad.
-    // Para Hamming(7,4), P = [[1,1,0],[0,1,1],[1,1,1],[1,0,1]] (transpuesta)
-    const hamming_P = [
-        [1, 0, 1, 1], // p1 = d1+d3+d4
-        [1, 1, 0, 1], // p2 = d1+d2+d4
-        [0, 1, 1, 1]  // p3 = d2+d3+d4
-    ];
-
+    // --- FEC Encoding/Decoding Functions ---
+    
     function hammingEncode(bits) {
         let encoded = '';
         for (let i = 0; i < bits.length; i += 4) {
             let data = bits.substring(i, i + 4);
-            if (data.length < 4) data = data.padEnd(4, '0'); // Rellenar si es necesario
+            if (data.length < 4) data = data.padEnd(4, '0');
 
             const d = data.split('').map(Number);
             const p = [
@@ -262,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let decoded = '';
         for (let i = 0; i < bits.length; i += 7) {
             let block = bits.substring(i, i + 7);
-            if (block.length < 7) continue; // Ignorar bloques incompletos
+            if (block.length < 7) continue;
 
             const r = block.split('').map(Number);
             const syndrome = [
@@ -273,22 +425,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const errorPos = parseInt(syndrome.reverse().join(''), 2);
             if (errorPos > 0) {
-                r[errorPos - 1] = 1 - r[errorPos - 1]; // Corregir el bit
+                r[errorPos - 1] = 1 - r[errorPos - 1];
             }
 
-            // Extraer los bits de datos
             decoded += `${r[2]}${r[4]}${r[5]}${r[6]}`;
         }
         return decoded;
     }
 
-    /**
-     * Calcula el BER teórico para diferentes modulaciones en un canal AWGN.
-     * @param {number} ebn0_db - Relación Eb/N0 en decibelios.
-     * @param {string} modulation - Tipo de modulación (e.g., 'bpsk', 'qpsk').
-     * @param {string} channel - Tipo de canal (actualmente solo 'awgn').
-     * @returns {number} - La tasa de error de bit (BER) teórica.
-     */
+    // Simplified LDPC (repetition code for demonstration)
+    function ldpcEncode(bits) {
+        let encoded = '';
+        for (let i = 0; i < bits.length; i++) {
+            encoded += bits[i] + bits[i]; // Rate 1/2
+        }
+        return encoded;
+    }
+
+    function ldpcDecode(bits) {
+        let decoded = '';
+        for (let i = 0; i < bits.length; i += 2) {
+            const bit1 = bits[i];
+            const bit2 = bits[i + 1] || bit1;
+            // Majority voting
+            decoded += bit1;
+        }
+        return decoded;
+    }
+
+    // Simplified Polar Code (repetition for demonstration)
+    function polarEncode(bits) {
+        let encoded = '';
+        for (let i = 0; i < bits.length; i++) {
+            encoded += bits[i] + bits[i]; // Rate 1/2
+        }
+        return encoded;
+    }
+
+    function polarDecode(bits) {
+        let decoded = '';
+        for (let i = 0; i < bits.length; i += 2) {
+            const bit1 = bits[i];
+            const bit2 = bits[i + 1] || bit1;
+            decoded += bit1;
+        }
+        return decoded;
+    }
+
+    // Simplified Turbo Code (triple repetition for demonstration)
+    function turboEncode(bits) {
+        let encoded = '';
+        for (let i = 0; i < bits.length; i++) {
+            encoded += bits[i] + bits[i] + bits[i]; // Rate 1/3
+        }
+        return encoded;
+    }
+
+    function turboDecode(bits) {
+        let decoded = '';
+        for (let i = 0; i < bits.length; i += 3) {
+            const bit1 = parseInt(bits[i] || '0');
+            const bit2 = parseInt(bits[i + 1] || '0');
+            const bit3 = parseInt(bits[i + 2] || '0');
+            // Majority voting
+            const sum = bit1 + bit2 + bit3;
+            decoded += sum >= 2 ? '1' : '0';
+        }
+        return decoded;
+    }
+
     function calculateTheoreticalBer(ebn0_db, modulation, channel) {
         const ebn0_linear = Math.pow(10, ebn0_db / 10);
         let ber = 0;
@@ -300,59 +505,330 @@ document.addEventListener('DOMContentLoaded', () => {
                     ber = 0.5 * erfc(Math.sqrt(ebn0_linear));
                     break;
                 case '16qam':
-                    const k_16qam = 4;
-                    ber = (3 / (2 * k_16qam)) * erfc(Math.sqrt((k_16qam / 5) * ebn0_linear));
+                    ber = (3 / 8) * erfc(Math.sqrt((4 / 10) * ebn0_linear));
                     break;
                 case '64qam':
-                    console.warn("BER teórico para 64-QAM en AWGN es una aproximación.");
-                    const k_64qam = 6;
-                    ber = (7 / (4 * k_64qam)) * erfc(Math.sqrt((k_64qam / 21) * ebn0_linear));
+                    ber = (7 / 24) * erfc(Math.sqrt((6 / 42) * ebn0_linear));
+                    break;
+                case '256qam':
+                    ber = (15 / 64) * erfc(Math.sqrt((8 / 170) * ebn0_linear));
                     break;
                 default: ber = 0;
             }
         } else if (channel === 'rayleigh') {
             switch (modulation) {
                 case 'bpsk':
-                    // BER = 0.5 * (1 - sqrt(EbN0 / (1 + EbN0)))
                     ber = 0.5 * (1 - Math.sqrt(ebn0_linear / (1 + ebn0_linear)));
                     break;
-                // Las fórmulas para QAM en Rayleigh son más complejas y se pueden añadir después.
+                case 'qpsk':
+                    ber = 0.5 * (1 - Math.sqrt(ebn0_linear / (1 + ebn0_linear)));
+                    break;
                 default:
-                    console.warn(`BER teórico para ${modulation} en canal ${channel} no implementado.`);
-                    ber = NaN; // No hay fórmula simple
+                    ber = NaN;
             }
         } else {
-            console.warn(`El canal ${channel} aún no está implementado.`);
             ber = NaN;
         }
 
         return ber;
     }
 
-    /**
-     * Muestra los resultados en la interfaz de usuario.
-     * @param {string} input - Señal de entrada.
-     * @param {string} output - Señal de salida.
-     * @param {number} theoreticalBer - Tasa de error de bit teórica.
-     * @param {number} simulatedBer - Tasa de error de bit de la simulación.
-     */
-    function displayResults(input, output, theoreticalBer, simulatedBer) {
+    function displayResults(input, output, result) {
+        berSimulatedSpan.textContent = result.simulatedBer.toExponential(4);
+        berTheoreticalSpan.textContent = result.theoreticalBer.toExponential(4);
+        codingGainSpan.textContent = result.codingGain.toFixed(2) + ' dB';
+        bitErrorsSpan.textContent = `${result.errors} / ${result.numBits}`;
+
+        // Color code based on BER
+        berSimulatedSpan.style.color = result.simulatedBer > 1e-3 ? '#d9534f' : '#5cb85c';
+
         inputSignalPre.textContent = formatSignal(input);
         outputSignalPre.textContent = formatSignal(output);
-
-        // Muestra el BER teórico y el simulado para comparación
-        const berText = `Teórico: ${theoreticalBer.toExponential(4)}, Simulado: ${simulatedBer.toExponential(4)}`;
-        berResultSpan.textContent = berText;
-        berResultSpan.style.color = theoreticalBer > 1e-4 ? '#d9534f' : '#5cb85c';
+        
+        // Show differences
+        let errorStr = '';
+        const minLen = Math.min(input.length, output.length);
+        for (let i = 0; i < minLen; i++) {
+            if (input[i] !== output[i]) {
+                errorStr += `Posición ${i}: ${input[i]} → ${output[i]}\n`;
+            }
+        }
+        signalErrorsPre.textContent = errorStr || 'No se detectaron errores';
     }
 
-    /**
-     * Formatea la cadena de bits para una mejor visualización.
-     * @param {string} signal - La cadena de bits.
-     * @returns {string} - La cadena de bits formateada.
-     */
     function formatSignal(signal) {
-        // Agrega espacios cada 8 bits para facilitar la lectura
         return signal.replace(/(.{8})/g, '$1 ').trim();
+    }
+
+    function updateCharts(result, originalSymbols, noisySymbols) {
+        // Update BER chart with history
+        drawBERChart();
+        drawConstellationChart(originalSymbols, noisySymbols);
+    }
+
+    function drawBERChart() {
+        const canvas = document.getElementById('berChart');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 60;
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        if (simulationHistory.length === 0) {
+            drawEmptyBERChart();
+            return;
+        }
+
+        // Draw axes
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
+
+        // Labels
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText('Simulación #', width / 2, height - 20);
+        
+        ctx.save();
+        ctx.translate(20, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('BER (log scale)', 0, 0);
+        ctx.restore();
+
+        // Plot data
+        const maxIndex = simulationHistory.length;
+        const minBer = Math.min(...simulationHistory.map(r => Math.min(r.simulatedBer, r.theoreticalBer)));
+        const maxBer = Math.max(...simulationHistory.map(r => Math.max(r.simulatedBer, r.theoreticalBer)));
+        
+        const plotWidth = width - 2 * padding;
+        const plotHeight = height - 2 * padding;
+
+        // Draw theoretical BER
+        ctx.strokeStyle = '#667eea';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        simulationHistory.forEach((r, i) => {
+            const x = padding + (i / (maxIndex - 1 || 1)) * plotWidth;
+            const y = height - padding - (Math.log10(r.theoreticalBer) - Math.log10(maxBer)) / (Math.log10(minBer) - Math.log10(maxBer)) * plotHeight;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Draw simulated BER
+        ctx.strokeStyle = '#f093fb';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        simulationHistory.forEach((r, i) => {
+            const x = padding + (i / (maxIndex - 1 || 1)) * plotWidth;
+            const y = height - padding - (Math.log10(r.simulatedBer) - Math.log10(maxBer)) / (Math.log10(minBer) - Math.log10(maxBer)) * plotHeight;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Legend
+        ctx.fillStyle = '#667eea';
+        ctx.fillRect(width - 200, 30, 20, 10);
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'left';
+        ctx.fillText('BER Teórico', width - 175, 38);
+
+        ctx.fillStyle = '#f093fb';
+        ctx.fillRect(width - 200, 50, 20, 10);
+        ctx.fillStyle = '#333';
+        ctx.fillText('BER Simulado', width - 175, 58);
+    }
+
+    function drawConstellationChart(originalSymbols, noisySymbols) {
+        const canvas = document.getElementById('constellationChart');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 60;
+        
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw axes
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(width / 2, padding);
+        ctx.lineTo(width / 2, height - padding);
+        ctx.moveTo(padding, height / 2);
+        ctx.lineTo(width - padding, height / 2);
+        ctx.stroke();
+
+        // Labels
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText('In-Phase (I)', width / 2, height - 20);
+        
+        ctx.save();
+        ctx.translate(20, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Quadrature (Q)', 0, 0);
+        ctx.restore();
+
+        // Find scale
+        const allSymbols = [...originalSymbols, ...noisySymbols];
+        const maxI = Math.max(...allSymbols.map(s => Math.abs(s.i)));
+        const maxQ = Math.max(...allSymbols.map(s => Math.abs(s.q)));
+        const scale = Math.max(maxI, maxQ) * 1.2;
+
+        const plotWidth = width - 2 * padding;
+        const plotHeight = height - 2 * padding;
+
+        // Draw noisy symbols (received)
+        ctx.fillStyle = 'rgba(240, 147, 251, 0.3)';
+        noisySymbols.slice(0, 100).forEach(s => {
+            const x = width / 2 + (s.i / scale) * plotWidth / 2;
+            const y = height / 2 - (s.q / scale) * plotHeight / 2;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+
+        // Draw original symbols (transmitted)
+        ctx.fillStyle = 'rgba(102, 126, 234, 0.8)';
+        originalSymbols.slice(0, 100).forEach(s => {
+            const x = width / 2 + (s.i / scale) * plotWidth / 2;
+            const y = height / 2 - (s.q / scale) * plotHeight / 2;
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+
+        // Legend
+        ctx.fillStyle = '#667eea';
+        ctx.beginPath();
+        ctx.arc(width - 180, 40, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'left';
+        ctx.fillText('Símbolos Transmitidos', width - 170, 43);
+
+        ctx.fillStyle = 'rgba(240, 147, 251, 0.6)';
+        ctx.beginPath();
+        ctx.arc(width - 180, 60, 3, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#333';
+        ctx.fillText('Símbolos Recibidos', width - 170, 63);
+    }
+
+    function updateParamsTable(result) {
+        const params = [
+            ['Tecnología', getTechnologyName(result.technology)],
+            ['Eb/N0', `${result.ebn0_db} dB`],
+            ['SNR', `${result.snr.toFixed(2)} dB`],
+            ['Velocidad de Datos', `${result.dataRate} Mbps`],
+            ['Modulación', result.modulation.toUpperCase()],
+            ['Canal', result.channel.toUpperCase()],
+            ['Multiplexación', result.multiplexing.toUpperCase()],
+            ['FEC', result.fec.toUpperCase()],
+            ['Overhead FEC', `${((result.fecOverhead - 1) * 100).toFixed(0)}%`],
+            ['Potencia de Señal', `${(10 * Math.log10(result.signalPower)).toFixed(2)} dBm`],
+            ['Potencia de Ruido', `${(10 * Math.log10(result.noisePower)).toFixed(2)} dBm`]
+        ];
+
+        if (result.k_factor_db !== null) {
+            params.push(['Factor K Rician', `${result.k_factor_db} dB`]);
+        }
+
+        paramsTable.innerHTML = '<tr><th>Parámetro</th><th>Valor</th></tr>';
+        params.forEach(([param, value]) => {
+            const row = paramsTable.insertRow();
+            row.insertCell().textContent = param;
+            row.insertCell().textContent = value;
+        });
+    }
+
+    function updateFECComparison(result, berNoFec) {
+        const tbody = document.getElementById('fec-comparison-body');
+        const improvement = berNoFec > 0 ? ((berNoFec - result.simulatedBer) / berNoFec * 100).toFixed(2) : '0.00';
+        
+        tbody.innerHTML = `
+            <tr>
+                <td>${result.fec.toUpperCase()}</td>
+                <td>${berNoFec.toExponential(4)}</td>
+                <td>${result.simulatedBer.toExponential(4)}</td>
+                <td>${improvement}%</td>
+                <td>${((result.fecOverhead - 1) * 100).toFixed(0)}%</td>
+            </tr>
+        `;
+    }
+
+    function getTechnologyName(tech) {
+        const names = {
+            '5g': '5G',
+            '5g-advanced': '5G Avanzado',
+            '6g': '6G'
+        };
+        return names[tech] || tech;
+    }
+
+    function compareTechnologies() {
+        const ebn0_db = parseFloat(ebn0Input.value);
+        const modulation = modulationSelect.value;
+        const channel = channelSelect.value;
+        const k_factor_db = parseFloat(ricianKInput.value);
+        const dataRate = parseFloat(dataRateInput.value);
+
+        const technologies = [
+            { name: '5g', fec: 'ldpc', mod: 'qpsk' },
+            { name: '5g-advanced', fec: 'ldpc', mod: '64qam' },
+            { name: '6g', fec: 'polar', mod: '256qam' }
+        ];
+
+        const tbody = document.getElementById('tech-comparison-body');
+        tbody.innerHTML = '';
+
+        technologies.forEach(tech => {
+            const numBits = 2000;
+            const originalBits = generateRandomBits(numBits);
+            
+            // Simulate for this technology
+            let encodedBits = tech.fec === 'ldpc' ? ldpcEncode(originalBits) : polarEncode(originalBits);
+            const { symbols, k } = modulate(encodedBits, tech.mod);
+            const noisySymbols = addNoise(symbols, ebn0_db, k, channel, k_factor_db);
+            const demodulatedBits = demodulate(noisySymbols, tech.mod);
+            const decodedBits = tech.fec === 'ldpc' ? ldpcDecode(demodulatedBits) : polarDecode(demodulatedBits);
+            
+            const errors = compareBits(originalBits, decodedBits);
+            const simulatedBer = errors / numBits;
+            const theoreticalBer = calculateTheoreticalBer(ebn0_db, tech.mod, channel);
+            
+            // Calculate without FEC
+            const demodulatedBitsNoFec = demodulate(noisySymbols, tech.mod).substring(0, numBits);
+            const errorsNoFec = compareBits(originalBits, demodulatedBitsNoFec);
+            const berNoFec = errorsNoFec / numBits;
+            const fecGain = berNoFec > 0 ? 10 * Math.log10(berNoFec / Math.max(simulatedBer, 1e-10)) : 0;
+            const efficiency = (1 - simulatedBer) * 100;
+
+            const row = tbody.insertRow();
+            row.insertCell().textContent = getTechnologyName(tech.name);
+            row.insertCell().textContent = simulatedBer.toExponential(4);
+            row.insertCell().textContent = theoreticalBer.toExponential(4);
+            row.insertCell().textContent = fecGain.toFixed(2) + ' dB';
+            row.insertCell().textContent = efficiency.toFixed(2) + '%';
+        });
+    }
+
+    function exportResults() {
+        const dataStr = JSON.stringify(simulationHistory, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ber_simulation_results_${new Date().getTime()}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
     }
 });
