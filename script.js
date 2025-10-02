@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Elementos del DOM ---
     const simulateBtn = document.getElementById('simulateBtn');
     const compareBtn = document.getElementById('compareBtn');
+    const compareChannelsBtn = document.getElementById('compareChannelsBtn');
     const exportBtn = document.getElementById('exportBtn');
     const technologySelect = document.getElementById('technology');
     const ebn0Input = document.getElementById('ebn0');
@@ -60,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners ---
     simulateBtn.addEventListener('click', runSimulation);
     compareBtn.addEventListener('click', compareTechnologies);
+    compareChannelsBtn.addEventListener('click', compareChannelsAndFEC);
     exportBtn.addEventListener('click', exportResults);
     
     channelSelect.addEventListener('change', () => {
@@ -523,11 +525,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'qpsk':
                     ber = 0.5 * (1 - Math.sqrt(ebn0_linear / (1 + ebn0_linear)));
                     break;
+                case '16qam':
+                    // Aproximación para 16-QAM en canal Rayleigh
+                    ber = (3 / 8) * (1 - Math.sqrt((4 / 10) * ebn0_linear / (1 + (4 / 10) * ebn0_linear)));
+                    break;
+                case '64qam':
+                    // Aproximación para 64-QAM en canal Rayleigh
+                    ber = (7 / 24) * (1 - Math.sqrt((6 / 42) * ebn0_linear / (1 + (6 / 42) * ebn0_linear)));
+                    break;
+                case '256qam':
+                    // Aproximación para 256-QAM en canal Rayleigh
+                    ber = (15 / 64) * (1 - Math.sqrt((8 / 170) * ebn0_linear / (1 + (8 / 170) * ebn0_linear)));
+                    break;
                 default:
-                    ber = NaN;
+                    ber = 0.5;
+            }
+        } else if (channel === 'rician') {
+            // Para canal Rician, usar aproximación basada en AWGN (línea de visión dominante)
+            // K-factor alto -> comportamiento similar a AWGN
+            // Esta es una aproximación simplificada
+            switch (modulation) {
+                case 'bpsk':
+                case 'qpsk':
+                    ber = 0.5 * erfc(Math.sqrt(0.8 * ebn0_linear));
+                    break;
+                case '16qam':
+                    ber = (3 / 8) * erfc(Math.sqrt(0.8 * (4 / 10) * ebn0_linear));
+                    break;
+                case '64qam':
+                    ber = (7 / 24) * erfc(Math.sqrt(0.8 * (6 / 42) * ebn0_linear));
+                    break;
+                case '256qam':
+                    ber = (15 / 64) * erfc(Math.sqrt(0.8 * (8 / 170) * ebn0_linear));
+                    break;
+                default: ber = 0;
             }
         } else {
-            ber = NaN;
+            ber = 0.5;
         }
 
         return ber;
@@ -601,10 +635,23 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText('BER (log scale)', 0, 0);
         ctx.restore();
 
-        // Plot data
-        const maxIndex = simulationHistory.length;
-        const minBer = Math.min(...simulationHistory.map(r => Math.min(r.simulatedBer, r.theoreticalBer)));
-        const maxBer = Math.max(...simulationHistory.map(r => Math.max(r.simulatedBer, r.theoreticalBer)));
+        // Plot data - filter out NaN and invalid values
+        const validData = simulationHistory.filter(r => 
+            !isNaN(r.simulatedBer) && !isNaN(r.theoreticalBer) && 
+            r.simulatedBer > 0 && r.theoreticalBer > 0
+        );
+        
+        if (validData.length === 0) {
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('Datos insuficientes para graficar', width / 2, height / 2);
+            return;
+        }
+        
+        const maxIndex = validData.length;
+        const minBer = Math.min(...validData.map(r => Math.min(r.simulatedBer, r.theoreticalBer)));
+        const maxBer = Math.max(...validData.map(r => Math.max(r.simulatedBer, r.theoreticalBer)));
         
         const plotWidth = width - 2 * padding;
         const plotHeight = height - 2 * padding;
@@ -613,11 +660,18 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.strokeStyle = '#667eea';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        simulationHistory.forEach((r, i) => {
+        let started = false;
+        validData.forEach((r, i) => {
             const x = padding + (i / (maxIndex - 1 || 1)) * plotWidth;
-            const y = height - padding - (Math.log10(r.theoreticalBer) - Math.log10(maxBer)) / (Math.log10(minBer) - Math.log10(maxBer)) * plotHeight;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+            const logBer = Math.log10(r.theoreticalBer);
+            if (!isFinite(logBer)) return;
+            const y = height - padding - (logBer - Math.log10(maxBer)) / (Math.log10(minBer) - Math.log10(maxBer)) * plotHeight;
+            if (!started) {
+                ctx.moveTo(x, y);
+                started = true;
+            } else {
+                ctx.lineTo(x, y);
+            }
         });
         ctx.stroke();
 
@@ -625,11 +679,18 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.strokeStyle = '#f093fb';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        simulationHistory.forEach((r, i) => {
+        started = false;
+        validData.forEach((r, i) => {
             const x = padding + (i / (maxIndex - 1 || 1)) * plotWidth;
-            const y = height - padding - (Math.log10(r.simulatedBer) - Math.log10(maxBer)) / (Math.log10(minBer) - Math.log10(maxBer)) * plotHeight;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+            const logBer = Math.log10(r.simulatedBer);
+            if (!isFinite(logBer)) return;
+            const y = height - padding - (logBer - Math.log10(maxBer)) / (Math.log10(minBer) - Math.log10(maxBer)) * plotHeight;
+            if (!started) {
+                ctx.moveTo(x, y);
+                started = true;
+            } else {
+                ctx.lineTo(x, y);
+            }
         });
         ctx.stroke();
 
@@ -830,5 +891,214 @@ document.addEventListener('DOMContentLoaded', () => {
         link.download = `ber_simulation_results_${new Date().getTime()}.json`;
         link.click();
         URL.revokeObjectURL(url);
+    }
+
+    function compareChannelsAndFEC() {
+        const ebn0_db = parseFloat(ebn0Input.value);
+        const modulation = modulationSelect.value;
+        
+        // Compare different channels
+        const channels = ['awgn', 'rayleigh', 'rician'];
+        const channelData = [];
+        
+        channels.forEach(channel => {
+            const numBits = 2000;
+            const originalBits = generateRandomBits(numBits);
+            const { symbols, k } = modulate(originalBits, modulation);
+            const k_factor_db = parseFloat(ricianKInput.value);
+            const noisySymbols = addNoise(symbols, ebn0_db, k, channel, k_factor_db);
+            const demodulatedBits = demodulate(noisySymbols, modulation).substring(0, numBits);
+            
+            const errors = compareBits(originalBits, demodulatedBits);
+            const simulatedBer = errors / numBits;
+            const theoreticalBer = calculateTheoreticalBer(ebn0_db, modulation, channel);
+            
+            channelData.push({
+                channel: channel,
+                simulatedBer: simulatedBer,
+                theoreticalBer: theoreticalBer
+            });
+        });
+        
+        // Compare different FEC techniques
+        const fecTechniques = ['none', 'hamming', 'ldpc', 'polar', 'turbo'];
+        const fecData = [];
+        const channel = channelSelect.value;
+        const k_factor_db = parseFloat(ricianKInput.value);
+        
+        fecTechniques.forEach(fec => {
+            const numBits = 2000;
+            const originalBits = generateRandomBits(numBits);
+            
+            let encodedBits = originalBits;
+            let decodeFn = (bits) => bits.substring(0, numBits);
+            
+            if (fec === 'hamming') {
+                encodedBits = hammingEncode(originalBits);
+                decodeFn = hammingDecode;
+            } else if (fec === 'ldpc') {
+                encodedBits = ldpcEncode(originalBits);
+                decodeFn = ldpcDecode;
+            } else if (fec === 'polar') {
+                encodedBits = polarEncode(originalBits);
+                decodeFn = polarDecode;
+            } else if (fec === 'turbo') {
+                encodedBits = turboEncode(originalBits);
+                decodeFn = turboDecode;
+            }
+            
+            const { symbols, k } = modulate(encodedBits, modulation);
+            const noisySymbols = addNoise(symbols, ebn0_db, k, channel, k_factor_db);
+            const demodulatedBits = demodulate(noisySymbols, modulation);
+            const decodedBits = decodeFn(demodulatedBits);
+            
+            const errors = compareBits(originalBits, decodedBits);
+            const simulatedBer = errors / numBits;
+            
+            fecData.push({
+                fec: fec,
+                simulatedBer: simulatedBer
+            });
+        });
+        
+        // Draw comparison charts
+        drawChannelComparisonChart(channelData);
+        drawFECComparisonChart(fecData);
+        
+        // Switch to comparison tab
+        document.querySelector('[data-tab="comparison-tab"]').click();
+    }
+
+    function drawChannelComparisonChart(data) {
+        const canvas = document.getElementById('channelComparisonChart');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 80;
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        // Draw axes
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
+        
+        // Labels
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText('Tipo de Canal', width / 2, height - 20);
+        
+        ctx.save();
+        ctx.translate(20, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('BER', 0, 0);
+        ctx.restore();
+        
+        // Chart title
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('Comparación de Desempeño por Tipo de Canal', width / 2, 30);
+        
+        const barWidth = (width - 2 * padding) / (data.length * 2);
+        const maxBer = Math.max(...data.map(d => Math.max(d.simulatedBer, d.theoreticalBer || 0)));
+        
+        data.forEach((d, i) => {
+            const x = padding + i * barWidth * 2;
+            
+            // Simulated BER bar
+            const simHeight = (d.simulatedBer / maxBer) * (height - 2 * padding);
+            ctx.fillStyle = '#f093fb';
+            ctx.fillRect(x + 10, height - padding - simHeight, barWidth - 20, simHeight);
+            
+            // Theoretical BER bar (if valid)
+            if (d.theoreticalBer && !isNaN(d.theoreticalBer)) {
+                const theoHeight = (d.theoreticalBer / maxBer) * (height - 2 * padding);
+                ctx.fillStyle = '#667eea';
+                ctx.fillRect(x + barWidth, height - padding - theoHeight, barWidth - 20, theoHeight);
+            }
+            
+            // Channel label
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(d.channel.toUpperCase(), x + barWidth, height - padding + 20);
+        });
+        
+        // Legend
+        ctx.fillStyle = '#f093fb';
+        ctx.fillRect(width - 180, 60, 20, 10);
+        ctx.fillStyle = '#333';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('BER Simulado', width - 155, 68);
+        
+        ctx.fillStyle = '#667eea';
+        ctx.fillRect(width - 180, 80, 20, 10);
+        ctx.fillStyle = '#333';
+        ctx.fillText('BER Teórico', width - 155, 88);
+    }
+
+    function drawFECComparisonChart(data) {
+        const canvas = document.getElementById('fecComparisonChart');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 80;
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        // Draw axes
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
+        
+        // Labels
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText('Técnica de Control de Errores (FEC)', width / 2, height - 20);
+        
+        ctx.save();
+        ctx.translate(20, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('BER', 0, 0);
+        ctx.restore();
+        
+        // Chart title
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('Comparación de Desempeño por Técnica FEC', width / 2, 30);
+        
+        const barWidth = (width - 2 * padding) / (data.length * 1.5);
+        const maxBer = Math.max(...data.map(d => d.simulatedBer));
+        
+        data.forEach((d, i) => {
+            const x = padding + i * barWidth * 1.2;
+            
+            // BER bar
+            const barHeight = (d.simulatedBer / maxBer) * (height - 2 * padding);
+            
+            // Color gradient based on performance
+            const colors = ['#d9534f', '#f0ad4e', '#5bc0de', '#5cb85c', '#5cb85c'];
+            ctx.fillStyle = colors[i] || '#667eea';
+            ctx.fillRect(x + 10, height - padding - barHeight, barWidth - 20, barHeight);
+            
+            // FEC label
+            ctx.fillStyle = '#333';
+            ctx.font = '11px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(d.fec.toUpperCase(), x + barWidth / 2, height - padding + 20);
+            
+            // BER value
+            ctx.font = '10px Arial';
+            ctx.fillText(d.simulatedBer.toExponential(2), x + barWidth / 2, height - padding - barHeight - 5);
+        });
     }
 });
