@@ -1093,85 +1093,88 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function compareChannelsAndFEC() {
-        const ebn0_db = parseFloat(ebn0Input.value);
         const modulation = modulationSelect.value;
-        
-        // Compare different channels
-        const channels = ['awgn', 'rayleigh', 'rician'];
-        const channelData = [];
-        
-        channels.forEach(channel => {
-            const numBits = 2000;
-            const originalBits = generateRandomBits(numBits);
-            const { symbols, k } = modulate(originalBits, modulation);
-            const k_factor_db = parseFloat(ricianKInput.value);
-            const noisySymbols = addNoise(symbols, ebn0_db, k, channel, k_factor_db);
-            const demodulatedBits = demodulate(noisySymbols, modulation).substring(0, numBits);
-            
-            const errors = compareBits(originalBits, demodulatedBits);
-            const simulatedBer = errors / numBits;
-            const theoreticalBer = calculateTheoreticalBer(ebn0_db, modulation, channel);
-            
-            channelData.push({
-                channel: channel,
-                simulatedBer: simulatedBer,
-                theoreticalBer: theoreticalBer
-            });
-        });
-        
-        // Compare different FEC techniques
-        const fecTechniques = ['none', 'hamming', 'bch', 'reed-solomon', 'ldpc', 'polar', 'turbo'];
-        const fecData = [];
         const channel = channelSelect.value;
         const k_factor_db = parseFloat(ricianKInput.value);
         
+        // Compare different FEC techniques across Eb/N0 range
+        const ebn0Range = [];
+        for (let ebn0 = -5; ebn0 <= 15; ebn0 += 1) {
+            ebn0Range.push(ebn0);
+        }
+        
+        const fecTechniques = ['none', 'hamming', 'bch', 'reed-solomon', 'ldpc', 'polar', 'turbo'];
+        const fecCurvesData = [];
+        
         fecTechniques.forEach(fec => {
-            const numBits = 2000;
-            const originalBits = generateRandomBits(numBits);
+            const fecData = {
+                name: fec,
+                displayName: getFECDisplayName(fec),
+                points: []
+            };
             
-            let encodedBits = originalBits;
-            let decodeFn = (bits) => bits.substring(0, numBits);
-            
-            if (fec === 'hamming') {
-                encodedBits = hammingEncode(originalBits);
-                decodeFn = hammingDecode;
-            } else if (fec === 'bch') {
-                encodedBits = bchEncode(originalBits);
-                decodeFn = bchDecode;
-            } else if (fec === 'reed-solomon') {
-                encodedBits = reedSolomonEncode(originalBits);
-                decodeFn = reedSolomonDecode;
-            } else if (fec === 'ldpc') {
-                encodedBits = ldpcEncode(originalBits);
-                decodeFn = ldpcDecode;
-            } else if (fec === 'polar') {
-                encodedBits = polarEncode(originalBits);
-                decodeFn = polarDecode;
-            } else if (fec === 'turbo') {
-                encodedBits = turboEncode(originalBits);
-                decodeFn = turboDecode;
-            }
-            
-            const { symbols, k } = modulate(encodedBits, modulation);
-            const noisySymbols = addNoise(symbols, ebn0_db, k, channel, k_factor_db);
-            const demodulatedBits = demodulate(noisySymbols, modulation);
-            const decodedBits = decodeFn(demodulatedBits);
-            
-            const errors = compareBits(originalBits, decodedBits);
-            const simulatedBer = errors / numBits;
-            
-            fecData.push({
-                fec: fec,
-                simulatedBer: simulatedBer
+            ebn0Range.forEach(ebn0_db => {
+                const numBits = 2000;
+                const originalBits = generateRandomBits(numBits);
+                
+                let encodedBits = originalBits;
+                let decodeFn = (bits) => bits.substring(0, numBits);
+                
+                if (fec === 'hamming') {
+                    encodedBits = hammingEncode(originalBits);
+                    decodeFn = hammingDecode;
+                } else if (fec === 'bch') {
+                    encodedBits = bchEncode(originalBits);
+                    decodeFn = bchDecode;
+                } else if (fec === 'reed-solomon') {
+                    encodedBits = reedSolomonEncode(originalBits);
+                    decodeFn = reedSolomonDecode;
+                } else if (fec === 'ldpc') {
+                    encodedBits = ldpcEncode(originalBits);
+                    decodeFn = ldpcDecode;
+                } else if (fec === 'polar') {
+                    encodedBits = polarEncode(originalBits);
+                    decodeFn = polarDecode;
+                } else if (fec === 'turbo') {
+                    encodedBits = turboEncode(originalBits);
+                    decodeFn = turboDecode;
+                }
+                
+                const { symbols, k } = modulate(encodedBits, modulation);
+                const noisySymbols = addNoise(symbols, ebn0_db, k, channel, k_factor_db);
+                const demodulatedBits = demodulate(noisySymbols, modulation);
+                const decodedBits = decodeFn(demodulatedBits);
+                
+                const errors = compareBits(originalBits, decodedBits);
+                const simulatedBer = errors / numBits;
+                
+                fecData.points.push({
+                    ebn0: ebn0_db,
+                    ber: simulatedBer > 0 ? simulatedBer : 1e-10 // Avoid log(0)
+                });
             });
+            
+            fecCurvesData.push(fecData);
         });
         
-        // Draw comparison charts
-        drawChannelComparisonChart(channelData);
-        drawFECComparisonChart(fecData);
+        // Draw linear comparison chart
+        drawFECLinearComparisonChart(fecCurvesData);
         
         // Switch to comparison tab
         document.querySelector('[data-tab="comparison-tab"]').click();
+    }
+    
+    function getFECDisplayName(fec) {
+        const names = {
+            'none': 'Sin FEC',
+            'hamming': 'Hamming (7,4)',
+            'bch': 'BCH',
+            'reed-solomon': 'Reed-Solomon',
+            'ldpc': 'LDPC',
+            'polar': 'Polar Codes',
+            'turbo': 'Turbo Codes'
+        };
+        return names[fec] || fec;
     }
 
     function drawChannelComparisonChart(data) {
@@ -1305,6 +1308,169 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.font = '10px Arial';
             ctx.fillText(d.simulatedBer.toExponential(2), x + barWidth / 2, height - padding - barHeight - 5);
         });
+    }
+
+    function drawFECLinearComparisonChart(curvesData) {
+        const canvas = document.getElementById('fecComparisonChart');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 80;
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        // Draw axes
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
+        
+        // Labels
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText('Eb/N0 (dB)', width / 2, height - 20);
+        
+        ctx.save();
+        ctx.translate(25, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('BER (escala logarítmica)', 0, 0);
+        ctx.restore();
+        
+        // Chart title
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('Curvas BER vs Eb/N0 - Comparación de Técnicas FEC', width / 2, 30);
+        
+        // Find data ranges
+        const minEbn0 = -5;
+        const maxEbn0 = 15;
+        const minBer = 1e-6;
+        const maxBer = 1;
+        
+        const plotWidth = width - 2 * padding;
+        const plotHeight = height - 2 * padding;
+        
+        // Draw grid lines
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        
+        // Vertical grid lines (Eb/N0)
+        for (let ebn0 = minEbn0; ebn0 <= maxEbn0; ebn0 += 2) {
+            const x = padding + ((ebn0 - minEbn0) / (maxEbn0 - minEbn0)) * plotWidth;
+            ctx.beginPath();
+            ctx.moveTo(x, padding);
+            ctx.lineTo(x, height - padding);
+            ctx.stroke();
+            
+            // X-axis labels
+            ctx.fillStyle = '#666';
+            ctx.font = '11px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(ebn0.toString(), x, height - padding + 15);
+        }
+        
+        // Horizontal grid lines (BER - logarithmic)
+        const logMinBer = Math.log10(minBer);
+        const logMaxBer = Math.log10(maxBer);
+        
+        for (let logBer = logMinBer; logBer <= logMaxBer; logBer += 1) {
+            const ber = Math.pow(10, logBer);
+            const y = height - padding - ((logBer - logMaxBer) / (logMinBer - logMaxBer)) * plotHeight;
+            
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.beginPath();
+            ctx.moveTo(padding, y);
+            ctx.lineTo(width - padding, y);
+            ctx.stroke();
+            
+            // Y-axis labels
+            ctx.fillStyle = '#666';
+            ctx.font = '11px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText('10^' + logBer, padding - 10, y + 4);
+        }
+        
+        // Define colors for each FEC technique
+        const colors = [
+            '#d9534f',  // none - red
+            '#f0ad4e',  // hamming - orange
+            '#5bc0de',  // bch - cyan
+            '#9370db',  // reed-solomon - purple
+            '#5cb85c',  // ldpc - green
+            '#667eea',  // polar - blue
+            '#f093fb'   // turbo - pink
+        ];
+        
+        // Draw curves for each FEC technique
+        curvesData.forEach((fecData, idx) => {
+            ctx.strokeStyle = colors[idx] || '#333';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            let started = false;
+            fecData.points.forEach(point => {
+                const x = padding + ((point.ebn0 - minEbn0) / (maxEbn0 - minEbn0)) * plotWidth;
+                const logBer = Math.log10(Math.max(point.ber, minBer));
+                const y = height - padding - ((logBer - logMaxBer) / (logMinBer - logMaxBer)) * plotHeight;
+                
+                if (!started) {
+                    ctx.moveTo(x, y);
+                    started = true;
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            ctx.stroke();
+            
+            // Draw points on the curve
+            ctx.fillStyle = colors[idx];
+            fecData.points.forEach(point => {
+                const x = padding + ((point.ebn0 - minEbn0) / (maxEbn0 - minEbn0)) * plotWidth;
+                const logBer = Math.log10(Math.max(point.ber, minBer));
+                const y = height - padding - ((logBer - logMaxBer) / (logMinBer - logMaxBer)) * plotHeight;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        });
+        
+        // Draw legend
+        const legendX = width - 250;
+        const legendY = padding + 20;
+        const legendSpacing = 25;
+        
+        ctx.font = 'bold 12px Arial';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'left';
+        ctx.fillText('Leyenda:', legendX, legendY - 5);
+        
+        curvesData.forEach((fecData, idx) => {
+            const y = legendY + (idx + 1) * legendSpacing;
+            
+            // Color line
+            ctx.strokeStyle = colors[idx];
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(legendX, y);
+            ctx.lineTo(legendX + 30, y);
+            ctx.stroke();
+            
+            // FEC name
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Arial';
+            ctx.fillText(fecData.displayName, legendX + 40, y + 4);
+        });
+        
+        // Add instructions text
+        ctx.fillStyle = '#666';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Menor BER = Mejor desempeño', width / 2, height - 5);
     }
 
     function optimizeParameters() {

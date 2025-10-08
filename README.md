@@ -314,6 +314,345 @@ Donde:
 - Rician (K=10 dB): ~10⁻⁴
 - Rayleigh: ~10⁻²
 
+## Fórmulas Matemáticas Utilizadas en el Simulador
+
+Esta sección documenta todas las fórmulas matemáticas implementadas en el simulador para cálculos de BER, métricas y procesamiento de señales.
+
+### 1. Generación de Ruido Gaussiano (Box-Muller Transform)
+
+Para generar muestras de ruido gaussiano con distribución N(0,1):
+
+```
+u₁, u₂ ~ Uniforme(0,1)
+
+z₀ = √(-2·ln(u₁)) · cos(2π·u₂)
+z₁ = √(-2·ln(u₁)) · sin(2π·u₂)
+```
+
+Donde z₀ y z₁ son variables aleatorias gaussianas independientes con media 0 y varianza 1.
+
+### 2. BER Teórico para Canal AWGN
+
+#### BPSK (Binary Phase Shift Keying)
+```
+BER_BPSK = (1/2) · erfc(√(Eb/N0))
+```
+
+#### QPSK (Quadrature Phase Shift Keying)
+```
+BER_QPSK = (1/2) · erfc(√(Eb/N0))
+```
+
+#### 8-PSK (8-Phase Shift Keying)
+```
+BER_8PSK ≈ (1/3) · erfc(√(3·Eb/N0) · sin(π/8))
+```
+
+#### 16-QAM (16-Quadrature Amplitude Modulation)
+```
+BER_16QAM ≈ (3/8) · erfc(√((4/10)·Eb/N0))
+```
+
+#### 64-QAM
+```
+BER_64QAM ≈ (7/24) · erfc(√((6/42)·Eb/N0))
+```
+
+#### 256-QAM
+```
+BER_256QAM ≈ (15/64) · erfc(√((8/170)·Eb/N0))
+```
+
+**Nota**: La función erfc(x) es la función de error complementaria:
+```
+erfc(x) = (2/√π) · ∫[x,∞] e^(-t²) dt
+```
+
+### 3. BER Teórico para Canal Rayleigh
+
+#### BPSK/QPSK en Rayleigh
+```
+BER_Rayleigh = (1/2) · (1 - √(Eb/N0 / (1 + Eb/N0)))
+```
+
+#### 8-PSK en Rayleigh
+```
+BER_8PSK_Rayleigh ≈ (1/3) · (1 - √(3·Eb/N0 / (1 + 3·Eb/N0)))
+```
+
+#### M-QAM en Rayleigh
+```
+BER_QAM_Rayleigh ≈ factor · (1 - √(α·Eb/N0 / (1 + α·Eb/N0)))
+```
+
+Donde α depende del orden de modulación M.
+
+### 4. Desvanecimiento de Canal
+
+#### Desvanecimiento Rayleigh
+```
+h = (x + j·y) / √2
+
+Donde: x, y ~ N(0,1) independientes
+Potencia promedio: E[|h|²] = 1
+```
+
+#### Desvanecimiento Rician
+```
+h = √(K/(K+1)) + √(1/(2(K+1))) · (x + j·y)
+
+Donde:
+  K = factor Rician en lineal (K_dB = 10·log₁₀(K))
+  x, y ~ N(0,1) independientes
+  E[|h|²] = 1
+```
+
+**Factor K**: Relación entre potencia de componente LOS y potencia dispersada
+- K alto (>10 dB) → Canal similar a AWGN
+- K bajo (<3 dB) → Canal similar a Rayleigh
+
+### 5. Adición de Ruido al Canal
+
+```
+Señal recibida: r = h · s + n
+
+Donde:
+  r = símbolo recibido
+  h = coeficiente de canal (fading)
+  s = símbolo transmitido
+  n = ruido AWGN ~ CN(0, N₀/2)
+
+Potencia de ruido: N₀ = Es / (2 · Eb/N0 · k)
+
+Donde:
+  Es = energía por símbolo (normalizado a 1)
+  k = bits por símbolo
+  Eb/N0 = relación energía-ruido en lineal
+```
+
+### 6. PAPR (Peak-to-Average Power Ratio)
+
+```
+PAPR = 10 · log₁₀(P_pico / P_promedio)
+
+P_pico = max{|s₁|², |s₂|², ..., |sₙ|²}
+
+P_promedio = (1/N) · Σ|sᵢ|²
+```
+
+**Valores de referencia (IEEE 2022)**:
+- Hamming (7,4): PAPR = 6.524 dB
+- Turbo Codes: PAPR = 8.062 dB
+
+**Importancia**: PAPR alto requiere amplificadores con mayor rango dinámico → mayor consumo energético
+
+### 7. EVM (Error Vector Magnitude)
+
+```
+EVM (%) = 100 · √(Σ|sᵣₓ[i] - sₜₓ[i]|² / Σ|sₜₓ[i]|²)
+
+Donde:
+  sₜₓ[i] = símbolo ideal transmitido i
+  sᵣₓ[i] = símbolo recibido i
+```
+
+**Estándares 5G NR**:
+- QPSK: EVM < 17.5%
+- 16-QAM: EVM < 12.5%
+- 64-QAM: EVM < 8%
+- 256-QAM: EVM < 3.5%
+
+### 8. Throughput Efectivo
+
+```
+Throughput = R_datos · (1 - BER) · R_código
+
+Donde:
+  R_datos = velocidad de datos configurada (Mbps)
+  BER = tasa de error de bit
+  R_código = 1 / Overhead_FEC
+
+Code Rates:
+  - Sin FEC: R_código = 1
+  - Hamming (7,4): R_código = 4/7 ≈ 0.571
+  - BCH: R_código = 4/7 ≈ 0.571
+  - Reed-Solomon: R_código = 1/2 = 0.5
+  - LDPC: R_código = 1/2 = 0.5
+  - Polar: R_código = 1/2 = 0.5
+  - Turbo: R_código = 1/3 ≈ 0.333
+```
+
+### 9. Eficiencia Espectral
+
+```
+η = (k · R_código · (1 - BER)) / B
+
+Donde:
+  η = eficiencia espectral (bits/s/Hz)
+  k = bits por símbolo (log₂(M))
+  R_código = code rate del FEC
+  BER = tasa de error de bit
+  B = ancho de banda (MHz)
+
+Ejemplos:
+  - BPSK: k = 1
+  - QPSK: k = 2
+  - 8-PSK: k = 3
+  - 16-QAM: k = 4
+  - 64-QAM: k = 6
+  - 256-QAM: k = 8
+```
+
+### 10. Ganancia de Codificación
+
+```
+G_coding (dB) = 10 · log₁₀(BER_sin_FEC / BER_con_FEC)
+
+Alternativamente (en términos de Eb/N0):
+
+G_coding (dB) = (Eb/N0)_sin_FEC - (Eb/N0)_con_FEC
+
+para alcanzar el mismo BER objetivo
+```
+
+**Ganancias típicas según IEEE 2024**:
+- Hamming (7,4): ~2-3 dB
+- BCH: ~3-4 dB
+- Reed-Solomon: ~4-5 dB
+- LDPC: ~5-6 dB
+- Turbo: ~5-6 dB
+- Polar: ~6-7 dB
+
+### 11. Relación Eb/N0 a SNR
+
+```
+SNR (dB) = Eb/N0 (dB) + 10 · log₁₀(k)
+
+Donde:
+  k = bits por símbolo
+  SNR = Signal-to-Noise Ratio
+  Eb/N0 = Energy per bit to Noise power spectral density
+```
+
+### 12. Modulación - Constelaciones
+
+#### BPSK
+```
+s[0] = -1 + j·0  (bit 0)
+s[1] = +1 + j·0  (bit 1)
+
+Energía promedio: Es = 1
+```
+
+#### QPSK
+```
+s[00] = (-1-j)/√2
+s[01] = (-1+j)/√2
+s[10] = (+1-j)/√2
+s[11] = (+1+j)/√2
+
+Energía promedio: Es = 1
+```
+
+#### 8-PSK
+```
+s[k] = exp(j·(2πk/8 + π/8))  para k = 0,1,...,7
+
+Energía promedio: Es = 1
+```
+
+#### M-QAM
+```
+Constelación cuadrada M = 2^k
+
+Para M = 16:
+  Niveles I, Q ∈ {-3, -1, +1, +3}
+  Normalización: dividir por √10
+
+Para M = 64:
+  Niveles I, Q ∈ {-7, -5, -3, -1, +1, +3, +5, +7}
+  Normalización: dividir por √42
+
+Energía promedio: Es = 1
+```
+
+### 13. Límite de Shannon
+
+```
+C = B · log₂(1 + SNR)
+
+Donde:
+  C = capacidad del canal (bits/s)
+  B = ancho de banda (Hz)
+  SNR = signal-to-noise ratio (lineal)
+
+Eficiencia espectral máxima teórica:
+  η_max = C/B = log₂(1 + SNR)  bits/s/Hz
+```
+
+### 14. Función de Error Complementaria (erfc)
+
+Aproximación polinomial de Abramowitz-Stegun:
+
+```
+erfc(x) ≈ t · P(t) · e^(-x²)
+
+Donde:
+  t = 1 / (1 + p·x)
+  p = 0.3275911
+
+P(t) = a₁·t + a₂·t² + a₃·t³ + a₄·t⁴ + a₅·t⁵
+
+Coeficientes:
+  a₁ = 0.254829592
+  a₂ = -0.284496736
+  a₃ = 1.421413741
+  a₄ = -1.453152027
+  a₅ = 1.061405429
+
+Error máximo: |ε| < 1.5 × 10⁻⁷
+```
+
+### 15. Decodificación FEC (Simplificadas)
+
+#### Hamming (7,4)
+```
+Codificación: [d₀, d₁, d₂, d₃] → [p₀, p₁, d₀, p₂, d₁, d₂, d₃]
+
+Paridad:
+  p₀ = d₀ ⊕ d₁ ⊕ d₃
+  p₁ = d₀ ⊕ d₂ ⊕ d₃
+  p₂ = d₁ ⊕ d₂ ⊕ d₃
+
+Síndrome de error:
+  s₀ = p₀ ⊕ d₀ ⊕ d₁ ⊕ d₃
+  s₁ = p₁ ⊕ d₀ ⊕ d₂ ⊕ d₃
+  s₂ = p₂ ⊕ d₁ ⊕ d₂ ⊕ d₃
+
+Posición error = s₂·4 + s₁·2 + s₀
+```
+
+#### LDPC (Simplified Repetition)
+```
+Codificación: cada bit se repite 2 veces
+  [b₀, b₁, ..., bₙ] → [b₀,b₀, b₁,b₁, ..., bₙ,bₙ]
+
+Decodificación: majority voting
+  bit_decoded = majority(bit₁, bit₂)
+```
+
+### 16. Comparación de Bits
+
+```
+BER = N_errores / N_total
+
+N_errores = Σ XOR(bit_tx[i], bit_rx[i])
+
+Para i = 0 hasta N_total - 1
+```
+
+Estas fórmulas son la base matemática del simulador y permiten calcular con precisión todas las métricas mostradas.
+
 ## Cómo Usar el Simulador
 
 ### Inicio Rápido
