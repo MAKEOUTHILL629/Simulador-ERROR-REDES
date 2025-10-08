@@ -313,344 +313,37 @@ Donde:
 - Rician (K=10 dB): ~10⁻⁴
 - Rayleigh: ~10⁻²
 
-## Fórmulas Matemáticas Utilizadas en el Simulador
+## Fórmulas Matemáticas Clave
 
-Esta sección documenta todas las fórmulas matemáticas implementadas en el simulador para cálculos de BER, métricas y procesamiento de señales.
-
-### 1. Generación de Ruido Gaussiano (Box-Muller Transform)
-
-Para generar muestras de ruido gaussiano con distribución N(0,1):
-
+### BER Teórico (Canal AWGN)
 ```
-u₁, u₂ ~ Uniforme(0,1)
-
-z₀ = √(-2·ln(u₁)) · cos(2π·u₂)
-z₁ = √(-2·ln(u₁)) · sin(2π·u₂)
+BPSK/QPSK: BER = (1/2) · erfc(√(Eb/N0))
+16-QAM:    BER ≈ (3/8) · erfc(√((4/10)·Eb/N0))
+64-QAM:    BER ≈ (7/24) · erfc(√((6/42)·Eb/N0))
+256-QAM:   BER ≈ (15/64) · erfc(√((8/170)·Eb/N0))
 ```
 
-Donde z₀ y z₁ son variables aleatorias gaussianas independientes con media 0 y varianza 1.
-
-### 2. BER Teórico para Canal AWGN
-
-#### BPSK (Binary Phase Shift Keying)
+### BER Teórico (Canal Rayleigh)
 ```
-BER_BPSK = (1/2) · erfc(√(Eb/N0))
+BPSK/QPSK: BER = (1/2) · (1 - √(Eb/N0 / (1 + Eb/N0)))
 ```
 
-#### QPSK (Quadrature Phase Shift Keying)
+### Desvanecimiento de Canal
 ```
-BER_QPSK = (1/2) · erfc(√(Eb/N0))
-```
-
-#### 8-PSK (8-Phase Shift Keying)
-```
-BER_8PSK ≈ (1/3) · erfc(√(3·Eb/N0) · sin(π/8))
+Rayleigh: h = (x + j·y) / √2, donde x,y ~ N(0,1)
+Rician:   h = √(K/(K+1)) + √(1/(2(K+1))) · (x + j·y)
 ```
 
-#### 16-QAM (16-Quadrature Amplitude Modulation)
+### Métricas de Rendimiento
 ```
-BER_16QAM ≈ (3/8) · erfc(√((4/10)·Eb/N0))
-```
-
-#### 64-QAM
-```
-BER_64QAM ≈ (7/24) · erfc(√((6/42)·Eb/N0))
-```
-
-#### 256-QAM
-```
-BER_256QAM ≈ (15/64) · erfc(√((8/170)·Eb/N0))
+PAPR (dB) = 10 · log₁₀(P_pico / P_promedio)
+EVM (%)   = 100 · √(Σ|error|² / Σ|referencia|²)
+Throughput = DataRate · (1 - BER) / FEC_Overhead
+Eficiencia Espectral = (bits/símbolo · CodeRate) / Bandwidth
+Ganancia FEC (dB) = 10 · log₁₀(BER_sin_FEC / BER_con_FEC)
 ```
 
-**Nota**: La función erfc(x) es la función de error complementaria:
-```
-erfc(x) = (2/√π) · ∫[x,∞] e^(-t²) dt
-```
-
-### 3. BER Teórico para Canal Rayleigh
-
-#### BPSK/QPSK en Rayleigh
-```
-BER_Rayleigh = (1/2) · (1 - √(Eb/N0 / (1 + Eb/N0)))
-```
-
-#### 8-PSK en Rayleigh
-```
-BER_8PSK_Rayleigh ≈ (1/3) · (1 - √(3·Eb/N0 / (1 + 3·Eb/N0)))
-```
-
-#### M-QAM en Rayleigh
-```
-BER_QAM_Rayleigh ≈ factor · (1 - √(α·Eb/N0 / (1 + α·Eb/N0)))
-```
-
-Donde α depende del orden de modulación M.
-
-### 4. Desvanecimiento de Canal
-
-#### Desvanecimiento Rayleigh
-```
-h = (x + j·y) / √2
-
-Donde: x, y ~ N(0,1) independientes
-Potencia promedio: E[|h|²] = 1
-```
-
-#### Desvanecimiento Rician
-```
-h = √(K/(K+1)) + √(1/(2(K+1))) · (x + j·y)
-
-Donde:
-  K = factor Rician en lineal (K_dB = 10·log₁₀(K))
-  x, y ~ N(0,1) independientes
-  E[|h|²] = 1
-```
-
-**Factor K**: Relación entre potencia de componente LOS y potencia dispersada
-- K alto (>10 dB) → Canal similar a AWGN
-- K bajo (<3 dB) → Canal similar a Rayleigh
-
-### 5. Adición de Ruido al Canal
-
-```
-Señal recibida: r = h · s + n
-
-Donde:
-  r = símbolo recibido
-  h = coeficiente de canal (fading)
-  s = símbolo transmitido
-  n = ruido AWGN ~ CN(0, N₀/2)
-
-Potencia de ruido: N₀ = Es / (2 · Eb/N0 · k)
-
-Donde:
-  Es = energía por símbolo (normalizado a 1)
-  k = bits por símbolo
-  Eb/N0 = relación energía-ruido en lineal
-```
-
-### 6. PAPR (Peak-to-Average Power Ratio)
-
-```
-PAPR = 10 · log₁₀(P_pico / P_promedio)
-
-P_pico = max{|s₁|², |s₂|², ..., |sₙ|²}
-
-P_promedio = (1/N) · Σ|sᵢ|²
-```
-
-**Valores de referencia (IEEE 2022)**:
-- Hamming (7,4): PAPR = 6.524 dB
-- Turbo Codes: PAPR = 8.062 dB
-
-**Importancia**: PAPR alto requiere amplificadores con mayor rango dinámico → mayor consumo energético
-
-### 7. EVM (Error Vector Magnitude)
-
-```
-EVM (%) = 100 · √(Σ|sᵣₓ[i] - sₜₓ[i]|² / Σ|sₜₓ[i]|²)
-
-Donde:
-  sₜₓ[i] = símbolo ideal transmitido i
-  sᵣₓ[i] = símbolo recibido i
-```
-
-**Estándares 5G NR**:
-- QPSK: EVM < 17.5%
-- 16-QAM: EVM < 12.5%
-- 64-QAM: EVM < 8%
-- 256-QAM: EVM < 3.5%
-
-### 8. Throughput Efectivo
-
-```
-Throughput = R_datos · (1 - BER) · R_código
-
-Donde:
-  R_datos = velocidad de datos configurada (Mbps)
-  BER = tasa de error de bit
-  R_código = 1 / Overhead_FEC
-
-Code Rates:
-  - Sin FEC: R_código = 1
-  - Hamming (7,4): R_código = 4/7 ≈ 0.571
-  - BCH: R_código = 4/7 ≈ 0.571
-  - Reed-Solomon: R_código = 1/2 = 0.5
-  - LDPC: R_código = 1/2 = 0.5
-  - Polar: R_código = 1/2 = 0.5
-  - Turbo: R_código = 1/3 ≈ 0.333
-```
-
-### 9. Eficiencia Espectral
-
-```
-η = (k · R_código · (1 - BER)) / B
-
-Donde:
-  η = eficiencia espectral (bits/s/Hz)
-  k = bits por símbolo (log₂(M))
-  R_código = code rate del FEC
-  BER = tasa de error de bit
-  B = ancho de banda (MHz)
-
-Ejemplos:
-  - BPSK: k = 1
-  - QPSK: k = 2
-  - 8-PSK: k = 3
-  - 16-QAM: k = 4
-  - 64-QAM: k = 6
-  - 256-QAM: k = 8
-```
-
-### 10. Ganancia de Codificación
-
-```
-G_coding (dB) = 10 · log₁₀(BER_sin_FEC / BER_con_FEC)
-
-Alternativamente (en términos de Eb/N0):
-
-G_coding (dB) = (Eb/N0)_sin_FEC - (Eb/N0)_con_FEC
-
-para alcanzar el mismo BER objetivo
-```
-
-**Ganancias típicas según IEEE 2024**:
-- Hamming (7,4): ~2-3 dB
-- BCH: ~3-4 dB
-- Reed-Solomon: ~4-5 dB
-- LDPC: ~5-6 dB
-- Turbo: ~5-6 dB
-- Polar: ~6-7 dB
-
-### 11. Relación Eb/N0 a SNR
-
-```
-SNR (dB) = Eb/N0 (dB) + 10 · log₁₀(k)
-
-Donde:
-  k = bits por símbolo
-  SNR = Signal-to-Noise Ratio
-  Eb/N0 = Energy per bit to Noise power spectral density
-```
-
-### 12. Modulación - Constelaciones
-
-#### BPSK
-```
-s[0] = -1 + j·0  (bit 0)
-s[1] = +1 + j·0  (bit 1)
-
-Energía promedio: Es = 1
-```
-
-#### QPSK
-```
-s[00] = (-1-j)/√2
-s[01] = (-1+j)/√2
-s[10] = (+1-j)/√2
-s[11] = (+1+j)/√2
-
-Energía promedio: Es = 1
-```
-
-#### 8-PSK
-```
-s[k] = exp(j·(2πk/8 + π/8))  para k = 0,1,...,7
-
-Energía promedio: Es = 1
-```
-
-#### M-QAM
-```
-Constelación cuadrada M = 2^k
-
-Para M = 16:
-  Niveles I, Q ∈ {-3, -1, +1, +3}
-  Normalización: dividir por √10
-
-Para M = 64:
-  Niveles I, Q ∈ {-7, -5, -3, -1, +1, +3, +5, +7}
-  Normalización: dividir por √42
-
-Energía promedio: Es = 1
-```
-
-### 13. Límite de Shannon
-
-```
-C = B · log₂(1 + SNR)
-
-Donde:
-  C = capacidad del canal (bits/s)
-  B = ancho de banda (Hz)
-  SNR = signal-to-noise ratio (lineal)
-
-Eficiencia espectral máxima teórica:
-  η_max = C/B = log₂(1 + SNR)  bits/s/Hz
-```
-
-### 14. Función de Error Complementaria (erfc)
-
-Aproximación polinomial de Abramowitz-Stegun:
-
-```
-erfc(x) ≈ t · P(t) · e^(-x²)
-
-Donde:
-  t = 1 / (1 + p·x)
-  p = 0.3275911
-
-P(t) = a₁·t + a₂·t² + a₃·t³ + a₄·t⁴ + a₅·t⁵
-
-Coeficientes:
-  a₁ = 0.254829592
-  a₂ = -0.284496736
-  a₃ = 1.421413741
-  a₄ = -1.453152027
-  a₅ = 1.061405429
-
-Error máximo: |ε| < 1.5 × 10⁻⁷
-```
-
-### 15. Decodificación FEC (Simplificadas)
-
-#### Hamming (7,4)
-```
-Codificación: [d₀, d₁, d₂, d₃] → [p₀, p₁, d₀, p₂, d₁, d₂, d₃]
-
-Paridad:
-  p₀ = d₀ ⊕ d₁ ⊕ d₃
-  p₁ = d₀ ⊕ d₂ ⊕ d₃
-  p₂ = d₁ ⊕ d₂ ⊕ d₃
-
-Síndrome de error:
-  s₀ = p₀ ⊕ d₀ ⊕ d₁ ⊕ d₃
-  s₁ = p₁ ⊕ d₀ ⊕ d₂ ⊕ d₃
-  s₂ = p₂ ⊕ d₁ ⊕ d₂ ⊕ d₃
-
-Posición error = s₂·4 + s₁·2 + s₀
-```
-
-#### LDPC (Simplified Repetition)
-```
-Codificación: cada bit se repite 2 veces
-  [b₀, b₁, ..., bₙ] → [b₀,b₀, b₁,b₁, ..., bₙ,bₙ]
-
-Decodificación: majority voting
-  bit_decoded = majority(bit₁, bit₂)
-```
-
-### 16. Comparación de Bits
-
-```
-BER = N_errores / N_total
-
-N_errores = Σ XOR(bit_tx[i], bit_rx[i])
-
-Para i = 0 hasta N_total - 1
-```
-
-Estas fórmulas son la base matemática del simulador y permiten calcular con precisión todas las métricas mostradas.
+**Nota**: Para fórmulas detalladas de modulación, FEC, y procesamiento de señales, consultar el código fuente en `script.js`.
 
 ## Cómo Usar el Simulador
 
@@ -1506,145 +1199,33 @@ SOFTWARE.
 
 ---
 
-## Glosario de Conceptos Utilizados en el Simulador
+## Glosario Esencial
 
-### Términos Fundamentales
+**BER**: Bit Error Rate - Proporción de bits incorrectos (10⁻⁶ = excelente, 10⁻² = pobre)
 
-**BER (Bit Error Rate)**  
-Tasa de Error de Bit. Proporción de bits recibidos incorrectamente respecto al total de bits transmitidos. Un BER de 10⁻³ significa 1 error cada 1000 bits. Valores típicos: 10⁻⁶ (excelente) a 10⁻² (pobre).
+**Eb/N0**: Relación energía por bit a densidad de ruido (dB) - Mayor valor = Mejor SNR = Menor BER
 
-**Eb/N0 (Energy per Bit to Noise Spectral Density)**  
-Relación entre la energía por bit (Eb) y la densidad espectral de ruido (N0), expresada en dB. Es la métrica fundamental para evaluar eficiencia energética en comunicaciones digitales. Mayor Eb/N0 = Mejor SNR = Menor BER.
+**FEC**: Forward Error Correction - Técnicas que añaden redundancia para corregir errores (Hamming, LDPC, Polar, Turbo)
 
-**SNR (Signal-to-Noise Ratio)**  
-Relación Señal a Ruido. Compara la potencia de la señal deseada con la potencia del ruido de fondo. Se relaciona con Eb/N0 mediante: SNR = Eb/N0 + 10·log₁₀(k), donde k es el número de bits por símbolo de modulación.
+**PAPR**: Peak-to-Average Power Ratio - Relación potencia pico/promedio (dB) - Alto PAPR = Mayor consumo
 
-**FEC (Forward Error Correction)**  
-Corrección de Errores Hacia Adelante. Técnicas que agregan redundancia a los datos transmitidos para detectar y corregir errores sin necesidad de retransmisión. Ejemplos: Hamming, LDPC, Polar, Turbo.
+**EVM**: Error Vector Magnitude - Calidad de modulación (%) - <5% excelente, >20% problemas
 
-**PAPR (Peak-to-Average Power Ratio)**  
-Relación entre la potencia pico y la potencia promedio de una señal, expresada en dB. PAPR alto requiere amplificadores más costosos y consume más batería. Importante para eficiencia energética según IEEE 2022.
+**AWGN**: Additive White Gaussian Noise - Canal ideal con solo ruido térmico
 
-**EVM (Error Vector Magnitude)**  
-Magnitud del Vector de Error. Mide la calidad de la señal modulada comparando símbolos recibidos con los ideales. Expresado en porcentaje. Estándares 5G NR requieren EVM < 8% para 64-QAM, < 3.5% para 256-QAM.
+**Rayleigh Fading**: Desvanecimiento sin línea de visión (NLOS) - Peor caso, entornos urbanos
 
-### Técnicas de Modulación
+**Rician Fading**: Desvanecimiento con línea de visión (LOS) - Intermedio entre AWGN y Rayleigh
 
-**BPSK (Binary Phase Shift Keying)**  
-Modulación por desplazamiento de fase binaria. 1 bit por símbolo. Más robusta pero de menor capacidad. Usada en canales hostiles y comunicaciones de largo alcance.
+**Polar Codes**: Códigos FEC que alcanzan capacidad de Shannon - Mejor para bloques cortos (5G NR control)
 
-**QPSK (Quadrature Phase Shift Keying)**  
-Modulación por desplazamiento de fase en cuadratura. 2 bits por símbolo. Balance óptimo entre robustez y capacidad. Estándar en 4G/5G para señalización y datos de baja velocidad.
+**LDPC**: Low-Density Parity-Check - Óptimos para bloques largos (5G NR datos)
 
-**8-PSK (8-Phase Shift Keying)**  
-Modulación con 8 fases. 3 bits por símbolo. Mayor capacidad que QPSK pero más sensible a ruido. Usado en sistemas satelitales y microondas.
+**URLLC**: Ultra-Reliable Low Latency - BER < 10⁻⁹, <1ms latencia (vehículos, cirugía)
 
-**M-QAM (M-ary Quadrature Amplitude Modulation)**  
-Modulación que varía amplitud y fase. M símbolos (16, 64, 256, etc.). Mayor M = Mayor capacidad pero requiere mejor SNR. 64-QAM/256-QAM son estándares en 5G para altas velocidades.
+**eMBB**: Enhanced Mobile Broadband - >1 Gbps, alta eficiencia (streaming 4K/8K, AR/VR)
 
-### Tipos de Canal
-
-**AWGN (Additive White Gaussian Noise)**  
-Ruido Blanco Gaussiano Aditivo. Modelo de canal ideal con solo ruido térmico. Representa el mejor caso posible. Usado como línea base para comparaciones.
-
-**Rayleigh Fading**  
-Desvanecimiento de Rayleigh. Modelo para canales sin línea de visión directa (NLOS) con múltiples trayectorias. Representa el peor caso con alta variabilidad. Común en entornos urbanos densos.
-
-**Rician Fading**  
-Desvanecimiento de Rician. Canal con componente dominante (LOS) más múltiples trayectorias. Factor K define ratio LOS/NLOS. Intermedio entre AWGN y Rayleigh. Común en zonas suburbanas.
-
-### Técnicas FEC Específicas
-
-**Hamming (7,4)**  
-Código de bloque que codifica 4 bits en 7 bits. Detecta hasta 2 errores y corrige 1 error por bloque. Baja complejidad, útil para aplicaciones simples. PAPR = 6.524 dB (IEEE 2022).
-
-**BCH (Bose-Chaudhuri-Hocquenghem)**  
-Códigos cíclicos para corrección de múltiples errores. Generalizan códigos Hamming. Buenos para ráfagas cortas de errores. Menor rendimiento que técnicas modernas según IEEE 2024.
-
-**Reed-Solomon**  
-Códigos de bloque no binarios. Excelentes para ráfagas de errores. Ampliamente usados en CDs, DVDs y QR codes. Rendimiento intermedio en BER vs Eb/N0.
-
-**LDPC (Low-Density Parity-Check)**  
-Códigos de paridad de baja densidad. Óptimos para bloques largos. Estándar 5G para canales de datos. Decodificación iterativa con alta eficiencia.
-
-**Polar Codes**  
-Códigos que alcanzan la capacidad de canal de Shannon. Mejor rendimiento para bloques cortos según IEEE 2024. Estándar 5G NR para canales de control. Convergen a BER ≈ 0 para Eb/N0 ≥ 1 dB en AWGN.
-
-**Turbo Codes**  
-Códigos convolucionales con codificación/decodificación iterativa. Excelente rendimiento, compatible con 3G/4G. PAPR = 8.062 dB (IEEE 2022). Adecuados para bloques medianos.
-
-### Escenarios 5G/6G
-
-**URLLC (Ultra-Reliable Low Latency Communications)**  
-Comunicaciones de ultra confiabilidad y baja latencia. Objetivo: BER < 10⁻⁹, latencia < 1 ms. Aplicaciones: Vehículos autónomos, cirugía remota, automatización industrial.
-
-**eMBB (Enhanced Mobile Broadband)**  
-Banda ancha móvil mejorada. Objetivo: Velocidades > 1 Gbps, alta eficiencia espectral. Aplicaciones: Streaming 4K/8K, realidad aumentada/virtual, juegos en la nube.
-
-**mMTC (Massive Machine Type Communications)**  
-Comunicaciones masivas tipo máquina. Objetivo: > 1 millón dispositivos/km², bajo consumo energético. Aplicaciones: IoT, sensores, medidores inteligentes, smart cities.
-
-### Técnicas de Multiplexación
-
-**OFDM (Orthogonal Frequency Division Multiplexing)**  
-Multiplexación por división de frecuencias ortogonales. Divide canal en múltiples subportadoras. Estándar 4G/5G. Alta eficiencia espectral y resistencia a multi-trayecto.
-
-**OFDMA (Orthogonal Frequency Division Multiple Access)**  
-Extensión de OFDM para acceso múltiple. Asigna diferentes subportadoras a diferentes usuarios. Permite asignación dinámica de recursos.
-
-**F-OFDM (Filtered OFDM)**  
-OFDM con filtrado mejorado. Reduce emisiones fuera de banda. Usado en 5G Advanced para mejor aislamiento entre servicios y menor interferencia.
-
-**SC-FDMA (Single Carrier FDMA)**  
-FDMA de portadora única. Similar a OFDMA pero con menor PAPR. Preferido para uplink (transmisión del dispositivo) por menor consumo de batería.
-
-**NOMA (Non-Orthogonal Multiple Access)**  
-Acceso múltiple no ortogonal. Superpone múltiples usuarios en mismo recurso tiempo-frecuencia. Propuesto para 6G para aumentar capacidad y eficiencia.
-
-### Métricas de Rendimiento
-
-**Throughput Efectivo**  
-Velocidad de datos real considerando errores y overhead de codificación. Calculado como: Throughput = DataRate × (1 - BER) / FEC_Overhead.
-
-**Eficiencia Espectral**  
-Cantidad de bits transmitidos por Hz de ancho de banda por segundo (bits/s/Hz). Mayor eficiencia = Mejor uso del espectro. Calculada como: η = (k × R_código × (1 - BER)) / B.
-
-**Ganancia de Codificación**  
-Beneficio en dB obtenido al usar FEC. Expresa cuánto puede reducirse Eb/N0 manteniendo mismo BER. Ganancia típica: 2-3 dB (Hamming) hasta 6-7 dB (Polar).
-
-**Overhead de FEC**  
-Redundancia agregada por la codificación. Expresado como ratio (ej: 2x significa el doble de bits). Hamming (7,4) = 1.75x, Turbo = 3x. Mayor overhead = Mayor protección pero menor throughput.
-
-### Algoritmos de Decodificación
-
-**Hard Decision**  
-Decisión dura. El demodulador decide si cada bit es 0 o 1 antes de decodificar FEC. Simple y rápido pero subóptimo.
-
-**Soft Decision (LLR)**  
-Decisión suave con Log-Likelihood Ratios. El demodulador proporciona probabilidades o "confianzas" en lugar de decisiones binarias. Mejora ganancia de codificación ~2 dB. Usado en LDPC y Turbo.
-
-**CA-SCL (CRC-Aided Successive Cancellation List)**  
-Lista de cancelación sucesiva ayudada por CRC. Algoritmo de decodificación para Polar Codes. Proporciona mejor rendimiento que decodificación SC estándar según IEEE 2024.
-
-### Términos Adicionales
-
-**Constelación**  
-Diagrama que muestra todos los símbolos posibles en un esquema de modulación en el plano complejo I-Q. Puntos más separados = Más robusta. Más puntos = Mayor capacidad.
-
-**FFT (Fast Fourier Transform)**  
-Transformada Rápida de Fourier. Algoritmo para convertir señales del dominio del tiempo al dominio de la frecuencia. Fundamental para análisis espectral y OFDM.
-
-**PSD (Power Spectral Density)**  
-Densidad Espectral de Potencia. Muestra cómo se distribuye la potencia de una señal a través del espectro de frecuencias. Unidad: W/Hz o dB/Hz.
-
-**Límite de Shannon**  
-Capacidad máxima teórica de un canal de comunicaciones según el teorema de Claude Shannon. C = B × log₂(1 + SNR). Ningún sistema real puede superar este límite.
-
-**3GPP (3rd Generation Partnership Project)**  
-Organización que desarrolla protocolos de comunicaciones móviles. Responsable de estándares 3G/4G/5G. Define especificaciones técnicas para sistemas celulares globales.
-
-**IEEE (Institute of Electrical and Electronics Engineers)**  
-Instituto de Ingenieros Eléctricos y Electrónicos. Organización que publica investigaciones de vanguardia y define estándares en telecomunicaciones, incluyendo Wi-Fi y otros.
+**mMTC**: Massive Machine Type Communications - Millones de dispositivos, bajo consumo (IoT, sensores)
 
 ---
 
