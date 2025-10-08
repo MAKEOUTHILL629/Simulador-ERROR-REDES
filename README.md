@@ -84,16 +84,15 @@ El simulador incluye en las comparaciones automáticas:
 #### Gráficas Generadas Automáticamente
 - **BER vs Eb/N0**: Comparación entre BER teórico y simulado con historial
 - **Constelación con EVM**: Símbolos modulados antes y después del canal
-- **PAPR por Técnica**: Comparación de eficiencia energética
-- **Análisis Espectral (FFT)**: Densidad espectral de potencia
-- **Throughput por Modulación**: Rendimiento en función de la modulación
+- **PAPR por Modulación**: Comparación de eficiencia energética para todas las modulaciones (BPSK, QPSK, 8-PSK, 16-QAM, 64-QAM, 256-QAM)
 - **Comparación de Canales**: Gráfica de barras AWGN vs Rayleigh vs Rician
-- **Curvas BER-FEC**: Todas las técnicas FEC en un solo gráfico estilo IEEE
+- **Curvas BER-FEC**: Todas las técnicas FEC en un solo gráfico estilo IEEE con tabla de valores
 
 #### Tablas Comparativas
 - **Resultados de Simulación**: Todos los parámetros y métricas
 - **Comparación de Tecnologías**: 5G, 5G Advanced y 6G lado a lado
-- **Efectividad de FEC**: Las 7 técnicas con porcentaje de mejora
+- **Efectividad de FEC**: Las 7 técnicas con porcentaje de mejora (sin valores NaN)
+- **Valores BER vs Eb/N0**: Tabla numérica de todas las curvas FEC
 - **Escenarios 5G/6G**: URLLC, eMBB y mMTC con sus métricas
 
 #### Análisis de Señales

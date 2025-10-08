@@ -144,28 +144,6 @@
                     </div>
                     <canvas id="paprChart" width="800" height="400"></canvas>
                 </div>
-                
-                <div class="chart-container">
-                    <h3>Análisis Espectral (FFT)</h3>
-                    <div class="chart-explanation">
-                        <p><strong>¿Qué muestra esta gráfica?</strong> Densidad espectral de potencia de la señal transmitida.</p>
-                        <p><strong>Eje X:</strong> Frecuencia normalizada (-0.5 a 0.5 de la frecuencia de muestreo).</p>
-                        <p><strong>Eje Y:</strong> Potencia en dB (escala logarítmica).</p>
-                        <p><strong>Interpretación:</strong> Muestra cómo se distribuye la energía en el espectro. Ancho de banda ocupado y lóbulos laterales visibles.</p>
-                    </div>
-                    <canvas id="spectrumChart" width="800" height="400"></canvas>
-                </div>
-                
-                <div class="chart-container">
-                    <h3>Métricas de Rendimiento por Modulación</h3>
-                    <div class="chart-explanation">
-                        <p><strong>¿Qué muestra esta gráfica?</strong> Compara el throughput efectivo y eficiencia espectral de diferentes modulaciones.</p>
-                        <p><strong>Throughput (Mbps):</strong> Velocidad de datos real considerando errores y overhead de FEC.</p>
-                        <p><strong>Eficiencia Espectral (bits/s/Hz):</strong> Cantidad de bits transmitidos por Hz de ancho de banda.</p>
-                        <p><strong>Interpretación:</strong> Modulaciones altas (256-QAM) tienen mayor throughput pero requieren mejor SNR.</p>
-                    </div>
-                    <canvas id="throughputChart" width="800" height="400"></canvas>
-                </div>
             </div>
 
             <div id="comparison-tab" class="tab-content">
@@ -277,6 +255,28 @@
                         <p><strong>Ganancia de codificación típica:</strong> 2-3 dB (Hamming) hasta 6-7 dB (Polar) a BER = 10⁻⁵</p>
                     </div>
                     <canvas id="fecComparisonChart" width="800" height="500"></canvas>
+                    
+                    <div class="comparison-section" style="margin-top: 20px;">
+                        <h4>Tabla de Valores BER vs Eb/N0</h4>
+                        <p style="font-size: 0.9em; color: #666;">Valores de BER para cada técnica FEC en diferentes niveles de Eb/N0</p>
+                        <table id="fec-values-table">
+                            <thead>
+                                <tr>
+                                    <th>Eb/N0 (dB)</th>
+                                    <th>Sin FEC</th>
+                                    <th>Hamming</th>
+                                    <th>BCH</th>
+                                    <th>Reed-Solomon</th>
+                                    <th>LDPC</th>
+                                    <th>Polar</th>
+                                    <th>Turbo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fec-values-body">
+                                <tr><td colspan="8">Los datos se llenarán después de la simulación</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
