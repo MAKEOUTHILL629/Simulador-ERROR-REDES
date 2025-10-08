@@ -27,7 +27,7 @@
 
             <div class="param-group">
                 <label for="ebn0">Eb/N0 (dB): <span id="ebn0-value">10</span></label>
-                <input type="range" id="ebn0" min="0" max="30" value="10" step="0.5">
+                <input type="range" id="ebn0" min="-5" max="15" value="10" step="0.5">
             </div>
 
             <div class="param-group">
@@ -35,55 +35,26 @@
                 <input type="range" id="data-rate" min="1" max="10000" value="100" step="1">
             </div>
 
-            <div class="param-group">
-                <label for="modulation">Modulación:</label>
-                <select id="modulation">
-                    <option value="bpsk">BPSK</option>
-                    <option value="qpsk">QPSK</option>
-                    <option value="16qam">16-QAM</option>
-                    <option value="64qam">64-QAM</option>
-                    <option value="256qam">256-QAM</option>
-                </select>
+            <!-- Hidden parameters - set automatically based on technology -->
+            <input type="hidden" id="modulation" value="qpsk">
+            <input type="hidden" id="channel" value="awgn">
+            <input type="hidden" id="rician-k" value="10">
+            <input type="hidden" id="multiplexing" value="ofdm">
+            <input type="hidden" id="fec" value="none">
+            <input type="hidden" id="decoding" value="hard">
+            <input type="hidden" id="scenario" value="custom">
+
+            <div class="info-box">
+                <p><strong>Nota:</strong> Al hacer clic en "Simular", se generarán automáticamente todas las comparaciones:</p>
+                <ul>
+                    <li>✓ Comparación de todas las técnicas FEC (Sin FEC, Hamming, BCH, Reed-Solomon, LDPC, Polar, Turbo)</li>
+                    <li>✓ Comparación de todos los tipos de canal (AWGN, Rayleigh, Rician)</li>
+                    <li>✓ Comparación de los 3 escenarios 5G/6G (URLLC, eMBB, mMTC)</li>
+                </ul>
+                <p style="color: #f093fb; margin-top: 10px;">⏱️ Tiempo estimado: ~40-60 segundos</p>
             </div>
 
-            <div class="param-group">
-                <label for="channel">Tipo de Canal:</label>
-                <select id="channel">
-                    <option value="awgn">AWGN</option>
-                    <option value="rayleigh">Rayleigh</option>
-                    <option value="rician">Rician</option>
-                </select>
-            </div>
-
-            <div class="param-group" id="rician-k-group" style="display: none;">
-                <label for="rician-k">Factor K Rician (dB): <span id="rician-k-value">10</span></label>
-                <input type="range" id="rician-k" min="0" max="20" value="10" step="0.5">
-            </div>
-
-            <div class="param-group">
-                <label for="multiplexing">Multiplexación:</label>
-                <select id="multiplexing">
-                    <option value="ofdm">OFDM</option>
-                    <option value="ofdma">OFDMA</option>
-                    <option value="sc-fdma">SC-FDMA</option>
-                    <option value="noma">NOMA</option>
-                </select>
-            </div>
-
-            <div class="param-group">
-                <label for="fec">Técnica de Control de Errores (FEC):</label>
-                <select id="fec">
-                    <option value="none">Ninguna</option>
-                    <option value="hamming">Hamming (7,4)</option>
-                    <option value="ldpc">LDPC</option>
-                    <option value="polar">Polar Codes</option>
-                    <option value="turbo">Turbo Codes</option>
-                </select>
-            </div>
-
-            <button id="simulateBtn">Simular</button>
-            <button id="compareBtn" class="secondary-btn">Comparar Tecnologías</button>
-            <button id="compareChannelsBtn" class="secondary-btn">Comparar Canales y FEC</button>
+            <button id="simulateBtn" class="primary-btn">🚀 Simular y Comparar Todo</button>
         </section>
 
         <section id="results">
@@ -111,8 +82,20 @@
                             <p class="metric-value" id="coding-gain">N/A</p>
                         </div>
                         <div class="metric-card">
-                            <h4>Errores de Bit</h4>
-                            <p class="metric-value" id="bit-errors">N/A</p>
+                            <h4>Throughput Efectivo</h4>
+                            <p class="metric-value" id="throughput">N/A</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Eficiencia Espectral</h4>
+                            <p class="metric-value" id="spectral-efficiency">N/A</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>PAPR (dB)</h4>
+                            <p class="metric-value" id="papr">N/A</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>EVM (%)</h4>
+                            <p class="metric-value" id="evm">N/A</p>
                         </div>
                     </div>
 
@@ -129,38 +112,124 @@
 
             <div id="charts-tab" class="tab-content">
                 <h2>Visualización Gráfica</h2>
+                
                 <div class="chart-container">
-                    <h3>BER vs Eb/N0</h3>
+                    <h3>BER vs Eb/N0 (Comparativo)</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta gráfica?</strong> Compara el rendimiento del sistema con los valores teóricos esperados.</p>
+                        <p><strong>BER Simulado:</strong> Tasa de error medida en la simulación (puntos azules).</p>
+                        <p><strong>BER Teórico:</strong> Tasa de error calculada con fórmulas matemáticas (línea roja).</p>
+                        <p><strong>Interpretación:</strong> Si ambas curvas están cercanas, la simulación es precisa. Menor BER = Mejor calidad de comunicación.</p>
+                    </div>
                     <canvas id="berChart" width="800" height="400"></canvas>
                 </div>
+                
                 <div class="chart-container">
-                    <h3>Diagrama de Constelación</h3>
+                    <h3>Diagrama de Constelación con EVM</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta gráfica?</strong> Visualiza cómo los símbolos transmitidos (azul) se degradan por el canal y ruido (rosa).</p>
+                        <p><strong>EVM (Error Vector Magnitude):</strong> Mide la calidad de la señal en porcentaje. EVM bajo (&lt;8%) = Buena calidad.</p>
+                        <p><strong>Interpretación:</strong> Puntos rosa dispersos indican alto ruido o interferencia. Puntos agrupados = Canal de buena calidad.</p>
+                    </div>
                     <canvas id="constellationChart" width="800" height="400"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3>PAPR por Técnica de Modulación</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta gráfica?</strong> PAPR (Peak-to-Average Power Ratio) mide la eficiencia energética de cada modulación.</p>
+                        <p><strong>Importancia:</strong> PAPR bajo significa menor consumo de batería y amplificadores más eficientes.</p>
+                        <p><strong>Valores de referencia (IEEE 2022):</strong> Hamming = 6.524 dB, Turbo = 8.062 dB</p>
+                        <p><strong>Interpretación:</strong> BPSK/QPSK tienen menor PAPR (más eficientes), mientras que QAM alto tiene mayor PAPR.</p>
+                    </div>
+                    <canvas id="paprChart" width="800" height="400"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3>Análisis Espectral (FFT)</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta gráfica?</strong> Densidad espectral de potencia de la señal transmitida.</p>
+                        <p><strong>Eje X:</strong> Frecuencia normalizada (-0.5 a 0.5 de la frecuencia de muestreo).</p>
+                        <p><strong>Eje Y:</strong> Potencia en dB (escala logarítmica).</p>
+                        <p><strong>Interpretación:</strong> Muestra cómo se distribuye la energía en el espectro. Ancho de banda ocupado y lóbulos laterales visibles.</p>
+                    </div>
+                    <canvas id="spectrumChart" width="800" height="400"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3>Métricas de Rendimiento por Modulación</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta gráfica?</strong> Compara el throughput efectivo y eficiencia espectral de diferentes modulaciones.</p>
+                        <p><strong>Throughput (Mbps):</strong> Velocidad de datos real considerando errores y overhead de FEC.</p>
+                        <p><strong>Eficiencia Espectral (bits/s/Hz):</strong> Cantidad de bits transmitidos por Hz de ancho de banda.</p>
+                        <p><strong>Interpretación:</strong> Modulaciones altas (256-QAM) tienen mayor throughput pero requieren mejor SNR.</p>
+                    </div>
+                    <canvas id="throughputChart" width="800" height="400"></canvas>
                 </div>
             </div>
 
             <div id="comparison-tab" class="tab-content">
                 <h2>Tablas Comparativas</h2>
+                
                 <div class="comparison-section">
-                    <h3>Comparación de Tecnologías</h3>
+                    <h3>Comparación de Tecnologías (5G, 5G Advanced, 6G)</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta tabla?</strong> Compara el rendimiento de las tres generaciones de tecnología móvil.</p>
+                        <p><strong>Interpretación:</strong> 6G ofrece mayor eficiencia espectral pero requiere mejor SNR. 5G es más robusto en condiciones adversas.</p>
+                    </div>
                     <table id="tech-comparison-table">
                         <thead>
                             <tr>
                                 <th>Tecnología</th>
+                                <th>Modulación</th>
+                                <th>FEC</th>
                                 <th>BER Simulado</th>
-                                <th>BER Teórico</th>
-                                <th>Ganancia FEC</th>
-                                <th>Eficiencia</th>
+                                <th>Throughput (Mbps)</th>
+                                <th>Eficiencia (bits/s/Hz)</th>
                             </tr>
                         </thead>
                         <tbody id="tech-comparison-body">
-                            <tr><td colspan="5">Ejecute "Comparar Tecnologías" para ver resultados</td></tr>
+                            <tr><td colspan="6">Los datos se llenarán después de la simulación</td></tr>
                         </tbody>
                     </table>
                 </div>
 
                 <div class="comparison-section">
-                    <h3>Efectividad de Técnicas FEC</h3>
+                    <h3>Comparación de Escenarios 5G/6G (URLLC, eMBB, mMTC)</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta tabla?</strong> Compara los tres casos de uso principales de 5G/6G.</p>
+                        <p><strong>URLLC:</strong> Ultra-Reliable Low Latency (vehículos autónomos, cirugía remota) - Prioriza confiabilidad.</p>
+                        <p><strong>eMBB:</strong> Enhanced Mobile Broadband (streaming 4K/8K, AR/VR) - Prioriza velocidad.</p>
+                        <p><strong>mMTC:</strong> Massive Machine Type Comm (IoT, sensores) - Prioriza eficiencia energética.</p>
+                    </div>
+                    <table id="scenario-comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Escenario</th>
+                                <th>Eb/N0 (dB)</th>
+                                <th>Modulación</th>
+                                <th>FEC</th>
+                                <th>Canal</th>
+                                <th>BER</th>
+                                <th>Throughput (Mbps)</th>
+                                <th>Eficiencia (bits/s/Hz)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scenario-comparison-body">
+                            <tr><td colspan="8">Los datos se llenarán después de la simulación</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="comparison-section">
+                    <h3>Efectividad de Técnicas FEC (Forward Error Correction)</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta tabla?</strong> Cuantifica la ganancia de codificación de cada técnica FEC.</p>
+                        <p><strong>BER sin FEC:</strong> Tasa de error base sin corrección.</p>
+                        <p><strong>BER con FEC:</strong> Tasa de error después de aplicar la técnica de corrección.</p>
+                        <p><strong>Mejora (%):</strong> Porcentaje de reducción en BER.</p>
+                        <p><strong>Ganancia (dB):</strong> Mejora en términos de potencia (valores típicos: 2-15 dB según IEEE 2024).</p>
+                    </div>
                     <table id="fec-comparison-table">
                         <thead>
                             <tr>
@@ -168,23 +237,46 @@
                                 <th>BER sin FEC</th>
                                 <th>BER con FEC</th>
                                 <th>Mejora (%)</th>
+                                <th>Ganancia (dB)</th>
                                 <th>Overhead</th>
                             </tr>
                         </thead>
                         <tbody id="fec-comparison-body">
-                            <tr><td colspan="5">Los datos se llenarán después de la simulación</td></tr>
+                            <tr><td colspan="6">Los datos se llenarán después de la simulación</td></tr>
                         </tbody>
                     </table>
                 </div>
 
                 <div class="chart-container">
-                    <h3>Comparación de Tipo de Canal vs BER</h3>
+                    <h3>Comparación de Tipo de Canal vs BER (Gráfica de Barras)</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta gráfica?</strong> Compara el impacto de diferentes tipos de canal en el BER.</p>
+                        <p><strong>AWGN:</strong> Canal ideal con solo ruido blanco (mejor caso).</p>
+                        <p><strong>Rician:</strong> Canal con línea de visión directa (LOS) - Intermedio.</p>
+                        <p><strong>Rayleigh:</strong> Canal sin línea de visión (NLOS) con desvanecimiento (peor caso).</p>
+                        <p><strong>Interpretación:</strong> Rayleigh puede degradar BER hasta 1000x comparado con AWGN.</p>
+                    </div>
                     <canvas id="channelComparisonChart" width="800" height="400"></canvas>
                 </div>
 
                 <div class="chart-container">
-                    <h3>Comparación de Técnicas FEC vs BER</h3>
-                    <canvas id="fecComparisonChart" width="800" height="400"></canvas>
+                    <h3>Curvas BER vs Eb/N0 - Comparación de Técnicas FEC (Estilo IEEE)</h3>
+                    <div class="chart-explanation">
+                        <p><strong>¿Qué muestra esta gráfica?</strong> Curvas de rendimiento de todas las técnicas FEC a través del rango de Eb/N0.</p>
+                        <p><strong>Eje X:</strong> Eb/N0 en dB (relación energía por bit a densidad de ruido) - Mayor valor = Mejor SNR.</p>
+                        <p><strong>Eje Y:</strong> BER en escala logarítmica (10⁰ a 10⁻⁶) - Menor valor = Menos errores.</p>
+                        <p><strong>Interpretación según IEEE 2024:</strong></p>
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                            <li><strong>Polar Codes (azul):</strong> Mejor rendimiento, converge a BER ≈ 0 para Eb/N0 ≥ 1 dB</li>
+                            <li><strong>Turbo Codes (rosa):</strong> Excelente para bloques medianos, compatible con 3G/4G</li>
+                            <li><strong>LDPC (verde):</strong> Óptimo para bloques largos, estándar 5G data channels</li>
+                            <li><strong>Reed-Solomon (púrpura) y BCH (cyan):</strong> Buenos para ráfagas de errores</li>
+                            <li><strong>Hamming (naranja):</strong> Baja complejidad, adecuado para aplicaciones simples</li>
+                            <li><strong>Sin FEC (rojo):</strong> Línea base de referencia, peor rendimiento</li>
+                        </ul>
+                        <p><strong>Ganancia de codificación típica:</strong> 2-3 dB (Hamming) hasta 6-7 dB (Polar) a BER = 10⁻⁵</p>
+                    </div>
+                    <canvas id="fecComparisonChart" width="800" height="500"></canvas>
                 </div>
             </div>
 
