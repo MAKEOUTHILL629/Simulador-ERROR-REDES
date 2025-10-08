@@ -1549,34 +1549,54 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             // Step 1: Run base simulation with current technology
-            simulateBtn.textContent = '⏳ Paso 1/4: Simulación base...';
+            simulateBtn.textContent = '⏳ Paso 1/5: Simulación base...';
             await new Promise(resolve => setTimeout(resolve, 100));
             
             fecInput.value = 'none'; // Start with no FEC for base
             runSimulation();
             
+            // Draw additional charts
+            drawPAPRChart();
+            drawThroughputChart();
+            
             // Step 2: Compare all FEC techniques
-            simulateBtn.textContent = '⏳ Paso 2/4: Comparando técnicas FEC...';
+            simulateBtn.textContent = '⏳ Paso 2/5: Comparando técnicas FEC...';
             await new Promise(resolve => setTimeout(resolve, 500));
             
             await runFECComparison(ebn0_db, modulation, channel, dataRate);
+            updateFECEffectivenessTable(ebn0_db);
             
             // Step 3: Compare all channel types
-            simulateBtn.textContent = '⏳ Paso 3/4: Comparando tipos de canal...';
+            simulateBtn.textContent = '⏳ Paso 3/5: Comparando tipos de canal...';
             await new Promise(resolve => setTimeout(resolve, 500));
             
             await runChannelComparison(ebn0_db, modulation, dataRate);
             
-            // Step 4: Compare scenarios
-            simulateBtn.textContent = '⏳ Paso 4/4: Comparando escenarios 5G/6G...';
+            // Step 4: Compare technologies
+            simulateBtn.textContent = '⏳ Paso 4/5: Comparando tecnologías...';
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            updateTechnologyComparisonTable();
+            
+            // Step 5: Compare scenarios
+            simulateBtn.textContent = '⏳ Paso 5/5: Comparando escenarios 5G/6G...';
             await new Promise(resolve => setTimeout(resolve, 500));
             
             await runScenarioComparison(dataRate);
             
+            // Draw spectrum chart if symbols are available
+            if (simulationHistory.length > 0) {
+                // Generate symbols for spectrum analysis
+                const numBits = 256;
+                const bits = generateRandomBits(numBits);
+                const { symbols } = modulate(bits, modulation);
+                drawSpectrumChart(symbols);
+            }
+            
             // Switch to comparison tab to show results
             document.querySelector('[data-tab="comparison-tab"]').click();
             
-            alert('✅ Simulación completa!\n\nSe generaron todas las comparaciones:\n• Técnicas FEC (7 curvas)\n• Tipos de Canal (3 comparaciones)\n• Escenarios 5G/6G (URLLC, eMBB, mMTC)\n\nRevise la pestaña "Comparación" para ver los resultados.');
+            alert('✅ Simulación completa!\n\nSe generaron todas las comparaciones:\n• Técnicas FEC (7 curvas)\n• Tipos de Canal (3 comparaciones)\n• Escenarios 5G/6G (URLLC, eMBB, mMTC)\n• Comparación de Tecnologías\n• Todas las gráficas actualizadas\n\nRevise las pestañas "Gráficas" y "Comparación" para ver los resultados.');
             
         } catch (error) {
             console.error('Error en simulación:', error);
@@ -1786,4 +1806,450 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.appendChild(tr);
         });
     }
+
+    // Draw PAPR chart for different modulations
+    function drawPAPRChart() {
+        const canvas = document.getElementById('paprChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 80;
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        // PAPR values for different modulations (theoretical/simulated)
+        const modulations = ['BPSK', 'QPSK', '8-PSK', '16-QAM', '64-QAM', '256-QAM'];
+        const paprValues = [0, 0, 3.01, 4.77, 7.78, 9.03]; // dB values
+        
+        // Draw axes
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
+        
+        // Y-axis label
+        ctx.save();
+        ctx.translate(20, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('PAPR (dB)', 0, 0);
+        ctx.restore();
+        
+        // X-axis label
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Técnica de Modulación', width / 2, height - 20);
+        
+        // Title
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('PAPR por Técnica de Modulación', width / 2, 30);
+        
+        // Draw bars
+        const barWidth = (width - 2 * padding) / (modulations.length * 1.5);
+        const maxPAPR = 10;
+        const plotHeight = height - 2 * padding;
+        
+        modulations.forEach((mod, i) => {
+            const x = padding + (i + 0.5) * (width - 2 * padding) / modulations.length;
+            const barHeight = (paprValues[i] / maxPAPR) * plotHeight;
+            const y = height - padding - barHeight;
+            
+            // Draw bar with gradient
+            const gradient = ctx.createLinearGradient(x, y, x, height - padding);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x - barWidth / 2, y, barWidth, barHeight);
+            
+            // Draw border
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x - barWidth / 2, y, barWidth, barHeight);
+            
+            // Draw value on top
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${paprValues[i].toFixed(2)} dB`, x, y - 5);
+            
+            // Draw label
+            ctx.fillText(mod, x, height - padding + 20);
+        });
+        
+        // Y-axis scale
+        ctx.fillStyle = '#666';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 5; i++) {
+            const value = (i * 2);
+            const y = height - padding - (value / maxPAPR) * plotHeight;
+            ctx.fillText(`${value}`, padding - 10, y + 4);
+            
+            // Grid line
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding, y);
+            ctx.lineTo(width - padding, y);
+            ctx.stroke();
+        }
+        
+        // Add reference annotation
+        ctx.fillStyle = '#f093fb';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('Ref. IEEE 2022: Hamming = 6.524 dB, Turbo = 8.062 dB', padding, height - padding + 40);
+    }
+
+    // Draw Spectrum (FFT) chart
+    function drawSpectrumChart(symbols) {
+        const canvas = document.getElementById('spectrumChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 80;
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        if (!symbols || symbols.length === 0) {
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('Ejecute una simulación para ver el análisis espectral', width / 2, height / 2);
+            return;
+        }
+        
+        // Simple FFT approximation - compute PSD
+        const N = Math.min(256, symbols.length);
+        const psd = new Array(N).fill(0);
+        
+        for (let k = 0; k < N; k++) {
+            let real = 0, imag = 0;
+            for (let n = 0; n < N; n++) {
+                const angle = -2 * Math.PI * k * n / N;
+                real += symbols[n].i * Math.cos(angle) - symbols[n].q * Math.sin(angle);
+                imag += symbols[n].i * Math.sin(angle) + symbols[n].q * Math.cos(angle);
+            }
+            psd[k] = 10 * Math.log10(Math.max(real * real + imag * imag, 1e-10) / N);
+        }
+        
+        // Shift zero frequency to center
+        const psdShifted = [...psd.slice(N / 2), ...psd.slice(0, N / 2)];
+        
+        // Draw axes
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
+        
+        // Labels
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Frecuencia Normalizada', width / 2, height - 20);
+        
+        ctx.save();
+        ctx.translate(20, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Potencia (dB)', 0, 0);
+        ctx.restore();
+        
+        // Title
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('Densidad Espectral de Potencia (PSD)', width / 2, 30);
+        
+        // Find min/max for scaling
+        const minPSD = Math.min(...psdShifted);
+        const maxPSD = Math.max(...psdShifted);
+        const plotWidth = width - 2 * padding;
+        const plotHeight = height - 2 * padding;
+        
+        // Draw spectrum curve
+        ctx.strokeStyle = '#667eea';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        psdShifted.forEach((value, i) => {
+            const x = padding + (i / N) * plotWidth;
+            const y = height - padding - ((value - minPSD) / (maxPSD - minPSD)) * plotHeight;
+            
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        
+        ctx.stroke();
+        
+        // X-axis scale
+        ctx.fillStyle = '#666';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'center';
+        [-0.5, -0.25, 0, 0.25, 0.5].forEach(freq => {
+            const x = padding + ((freq + 0.5) / 1.0) * plotWidth;
+            ctx.fillText(freq.toFixed(2), x, height - padding + 20);
+        });
+        
+        // Y-axis scale
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 5; i++) {
+            const value = minPSD + (i / 5) * (maxPSD - minPSD);
+            const y = height - padding - (i / 5) * plotHeight;
+            ctx.fillText(`${value.toFixed(0)}`, padding - 10, y + 4);
+            
+            // Grid line
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding, y);
+            ctx.lineTo(width - padding, y);
+            ctx.stroke();
+        }
+    }
+
+    // Draw throughput and spectral efficiency chart
+    function drawThroughputChart() {
+        const canvas = document.getElementById('throughputChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 80;
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        // Get current simulation result
+        if (simulationHistory.length === 0) {
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('Ejecute una simulación para ver las métricas de rendimiento', width / 2, height / 2);
+            return;
+        }
+        
+        const latest = simulationHistory[simulationHistory.length - 1];
+        
+        // Draw axes
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
+        
+        // Title
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Métricas de Rendimiento', width / 2, 30);
+        
+        // Labels
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText('Métrica', width / 2, height - 20);
+        
+        ctx.save();
+        ctx.translate(20, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Valor', 0, 0);
+        ctx.restore();
+        
+        // Dual Y-axis chart
+        const throughput = latest.dataRate * (1 - latest.simulatedBer) / latest.fecOverhead;
+        const efficiency = latest.snr > 0 ? (Math.log2(1 + Math.pow(10, latest.snr / 10))).toFixed(2) : 0;
+        
+        // Draw bars
+        const barWidth = 100;
+        const centerX = width / 2;
+        
+        // Throughput bar (left)
+        const maxThroughput = latest.dataRate;
+        const throughputHeight = (throughput / maxThroughput) * (height - 2 * padding);
+        const x1 = centerX - 120;
+        const y1 = height - padding - throughputHeight;
+        
+        ctx.fillStyle = '#667eea';
+        ctx.fillRect(x1 - barWidth / 2, y1, barWidth, throughputHeight);
+        ctx.strokeStyle = '#333';
+        ctx.strokeRect(x1 - barWidth / 2, y1, barWidth, throughputHeight);
+        
+        ctx.fillStyle = '#333';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${throughput.toFixed(2)} Mbps`, x1, y1 - 5);
+        ctx.fillText('Throughput', x1, height - padding + 20);
+        ctx.fillText('Efectivo', x1, height - padding + 35);
+        
+        // Efficiency bar (right)
+        const maxEfficiency = 10;
+        const efficiencyHeight = (efficiency / maxEfficiency) * (height - 2 * padding);
+        const x2 = centerX + 120;
+        const y2 = height - padding - efficiencyHeight;
+        
+        ctx.fillStyle = '#764ba2';
+        ctx.fillRect(x2 - barWidth / 2, y2, barWidth, efficiencyHeight);
+        ctx.strokeStyle = '#333';
+        ctx.strokeRect(x2 - barWidth / 2, y2, barWidth, efficiencyHeight);
+        
+        ctx.fillStyle = '#333';
+        ctx.fillText(`${efficiency} bits/s/Hz`, x2, y2 - 5);
+        ctx.fillText('Eficiencia', x2, height - padding + 20);
+        ctx.fillText('Espectral', x2, height - padding + 35);
+        
+        // Y-axis scales
+        ctx.fillStyle = '#666';
+        ctx.font = '11px Arial';
+        
+        // Left scale (throughput)
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 5; i++) {
+            const value = (i / 5) * maxThroughput;
+            const y = height - padding - (i / 5) * (height - 2 * padding);
+            ctx.fillText(`${value.toFixed(0)}`, padding - 10, y + 4);
+        }
+        
+        // Right scale (efficiency)
+        ctx.textAlign = 'left';
+        for (let i = 0; i <= 5; i++) {
+            const value = (i / 5) * maxEfficiency;
+            const y = height - padding - (i / 5) * (height - 2 * padding);
+            ctx.fillText(`${value.toFixed(1)}`, width - padding + 10, y + 4);
+        }
+    }
+
+    // Update technology comparison table
+    function updateTechnologyComparisonTable() {
+        const tbody = document.getElementById('tech-comparison-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        const technologies = [
+            { name: '5G', modulation: 'QPSK', fec: 'LDPC', ebn0: parseFloat(ebn0Input.value) },
+            { name: '5G Advanced', modulation: '64-QAM', fec: 'LDPC', ebn0: parseFloat(ebn0Input.value) },
+            { name: '6G', modulation: '256-QAM', fec: 'Polar', ebn0: parseFloat(ebn0Input.value) }
+        ];
+        
+        technologies.forEach(tech => {
+            // Simplified simulation for each technology
+            const numBits = 1000;
+            const originalBits = generateRandomBits(numBits);
+            
+            // Use appropriate modulation
+            const modKey = tech.modulation.toLowerCase().replace('-', '');
+            const { symbols, k } = modulate(originalBits, modKey);
+            const noisySymbols = addNoise(symbols, tech.ebn0, k, 'awgn', 10);
+            const demodulatedBits = demodulate(noisySymbols, modKey).substring(0, numBits);
+            
+            const errors = compareBits(originalBits, demodulatedBits);
+            const simulatedBer = errors / numBits;
+            
+            const throughput = (parseFloat(dataRateInput.value) * (1 - simulatedBer)).toFixed(2);
+            const efficiency = (k * (1 - simulatedBer) / 1000).toFixed(3);
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${tech.name}</strong></td>
+                <td>${tech.modulation}</td>
+                <td>${tech.fec}</td>
+                <td>${simulatedBer.toExponential(2)}</td>
+                <td>${throughput}</td>
+                <td>${efficiency}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Update FEC effectiveness comparison table
+    function updateFECEffectivenessTable(ebn0_db) {
+        const tbody = document.getElementById('fec-comparison-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        const fecTechniques = [
+            { name: 'Hamming (7,4)', key: 'hamming', overhead: '7/4 (1.75x)' },
+            { name: 'BCH', key: 'bch', overhead: '7/4 (1.75x)' },
+            { name: 'Reed-Solomon', key: 'reed-solomon', overhead: '2/1 (2x)' },
+            { name: 'LDPC', key: 'ldpc', overhead: '2/1 (2x)' },
+            { name: 'Polar Codes', key: 'polar', overhead: '2/1 (2x)' },
+            { name: 'Turbo Codes', key: 'turbo', overhead: '3/1 (3x)' }
+        ];
+        
+        const modulation = document.getElementById('modulation').value;
+        const numBits = 1000;
+        
+        // Calculate BER without FEC first
+        const originalBits = generateRandomBits(numBits);
+        const { symbols, k } = modulate(originalBits, modulation);
+        const noisySymbols = addNoise(symbols, ebn0_db, k, 'awgn', 10);
+        const demodulatedBits = demodulate(noisySymbols, modulation).substring(0, numBits);
+        const errorsNoFec = compareBits(originalBits, demodulatedBits);
+        const berNoFec = errorsNoFec / numBits;
+        
+        fecTechniques.forEach(fec => {
+            const origBits = generateRandomBits(numBits);
+            
+            let encodedBits = origBits;
+            let decodeFn = (bits) => bits.substring(0, numBits);
+            
+            if (fec.key === 'hamming') {
+                encodedBits = hammingEncode(origBits);
+                decodeFn = hammingDecode;
+            } else if (fec.key === 'bch') {
+                encodedBits = bchEncode(origBits);
+                decodeFn = bchDecode;
+            } else if (fec.key === 'reed-solomon') {
+                encodedBits = reedSolomonEncode(origBits);
+                decodeFn = reedSolomonDecode;
+            } else if (fec.key === 'ldpc') {
+                encodedBits = ldpcEncode(origBits);
+                decodeFn = ldpcDecode;
+            } else if (fec.key === 'polar') {
+                encodedBits = polarEncode(origBits);
+                decodeFn = polarDecode;
+            } else if (fec.key === 'turbo') {
+                encodedBits = turboEncode(origBits);
+                decodeFn = turboDecode;
+            }
+            
+            const { symbols: fecSymbols } = modulate(encodedBits, modulation);
+            const noisyFecSymbols = addNoise(fecSymbols, ebn0_db, k, 'awgn', 10);
+            const demodulatedFecBits = demodulate(noisyFecSymbols, modulation);
+            const decodedBits = decodeFn(demodulatedFecBits);
+            
+            const errorsFec = compareBits(origBits, decodedBits);
+            const berFec = errorsFec / numBits;
+            
+            const improvement = berNoFec > 0 ? ((berNoFec - berFec) / berNoFec * 100).toFixed(1) : 0;
+            const gainDB = berNoFec > 0 && berFec > 0 ? (10 * Math.log10(berNoFec / berFec)).toFixed(2) : 'N/A';
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${fec.name}</strong></td>
+                <td>${berNoFec.toExponential(2)}</td>
+                <td>${berFec.toExponential(2)}</td>
+                <td>${improvement}%</td>
+                <td>${gainDB} dB</td>
+                <td>${fec.overhead}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
 });

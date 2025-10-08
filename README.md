@@ -1907,6 +1907,150 @@ Esta sección proporciona casos de prueba específicos para validar el funcionam
 
 **Contacto**: Para preguntas, sugerencias o reportar problemas, por favor abra un issue en el repositorio de GitHub.
 
+---
+
+## Glosario de Conceptos Utilizados en el Simulador
+
+### Términos Fundamentales
+
+**BER (Bit Error Rate)**  
+Tasa de Error de Bit. Proporción de bits recibidos incorrectamente respecto al total de bits transmitidos. Un BER de 10⁻³ significa 1 error cada 1000 bits. Valores típicos: 10⁻⁶ (excelente) a 10⁻² (pobre).
+
+**Eb/N0 (Energy per Bit to Noise Spectral Density)**  
+Relación entre la energía por bit (Eb) y la densidad espectral de ruido (N0), expresada en dB. Es la métrica fundamental para evaluar eficiencia energética en comunicaciones digitales. Mayor Eb/N0 = Mejor SNR = Menor BER.
+
+**SNR (Signal-to-Noise Ratio)**  
+Relación Señal a Ruido. Compara la potencia de la señal deseada con la potencia del ruido de fondo. Se relaciona con Eb/N0 mediante: SNR = Eb/N0 + 10·log₁₀(k), donde k es el número de bits por símbolo de modulación.
+
+**FEC (Forward Error Correction)**  
+Corrección de Errores Hacia Adelante. Técnicas que agregan redundancia a los datos transmitidos para detectar y corregir errores sin necesidad de retransmisión. Ejemplos: Hamming, LDPC, Polar, Turbo.
+
+**PAPR (Peak-to-Average Power Ratio)**  
+Relación entre la potencia pico y la potencia promedio de una señal, expresada en dB. PAPR alto requiere amplificadores más costosos y consume más batería. Importante para eficiencia energética según IEEE 2022.
+
+**EVM (Error Vector Magnitude)**  
+Magnitud del Vector de Error. Mide la calidad de la señal modulada comparando símbolos recibidos con los ideales. Expresado en porcentaje. Estándares 5G NR requieren EVM < 8% para 64-QAM, < 3.5% para 256-QAM.
+
+### Técnicas de Modulación
+
+**BPSK (Binary Phase Shift Keying)**  
+Modulación por desplazamiento de fase binaria. 1 bit por símbolo. Más robusta pero de menor capacidad. Usada en canales hostiles y comunicaciones de largo alcance.
+
+**QPSK (Quadrature Phase Shift Keying)**  
+Modulación por desplazamiento de fase en cuadratura. 2 bits por símbolo. Balance óptimo entre robustez y capacidad. Estándar en 4G/5G para señalización y datos de baja velocidad.
+
+**8-PSK (8-Phase Shift Keying)**  
+Modulación con 8 fases. 3 bits por símbolo. Mayor capacidad que QPSK pero más sensible a ruido. Usado en sistemas satelitales y microondas.
+
+**M-QAM (M-ary Quadrature Amplitude Modulation)**  
+Modulación que varía amplitud y fase. M símbolos (16, 64, 256, etc.). Mayor M = Mayor capacidad pero requiere mejor SNR. 64-QAM/256-QAM son estándares en 5G para altas velocidades.
+
+### Tipos de Canal
+
+**AWGN (Additive White Gaussian Noise)**  
+Ruido Blanco Gaussiano Aditivo. Modelo de canal ideal con solo ruido térmico. Representa el mejor caso posible. Usado como línea base para comparaciones.
+
+**Rayleigh Fading**  
+Desvanecimiento de Rayleigh. Modelo para canales sin línea de visión directa (NLOS) con múltiples trayectorias. Representa el peor caso con alta variabilidad. Común en entornos urbanos densos.
+
+**Rician Fading**  
+Desvanecimiento de Rician. Canal con componente dominante (LOS) más múltiples trayectorias. Factor K define ratio LOS/NLOS. Intermedio entre AWGN y Rayleigh. Común en zonas suburbanas.
+
+### Técnicas FEC Específicas
+
+**Hamming (7,4)**  
+Código de bloque que codifica 4 bits en 7 bits. Detecta hasta 2 errores y corrige 1 error por bloque. Baja complejidad, útil para aplicaciones simples. PAPR = 6.524 dB (IEEE 2022).
+
+**BCH (Bose-Chaudhuri-Hocquenghem)**  
+Códigos cíclicos para corrección de múltiples errores. Generalizan códigos Hamming. Buenos para ráfagas cortas de errores. Menor rendimiento que técnicas modernas según IEEE 2024.
+
+**Reed-Solomon**  
+Códigos de bloque no binarios. Excelentes para ráfagas de errores. Ampliamente usados en CDs, DVDs y QR codes. Rendimiento intermedio en BER vs Eb/N0.
+
+**LDPC (Low-Density Parity-Check)**  
+Códigos de paridad de baja densidad. Óptimos para bloques largos. Estándar 5G para canales de datos. Decodificación iterativa con alta eficiencia.
+
+**Polar Codes**  
+Códigos que alcanzan la capacidad de canal de Shannon. Mejor rendimiento para bloques cortos según IEEE 2024. Estándar 5G NR para canales de control. Convergen a BER ≈ 0 para Eb/N0 ≥ 1 dB en AWGN.
+
+**Turbo Codes**  
+Códigos convolucionales con codificación/decodificación iterativa. Excelente rendimiento, compatible con 3G/4G. PAPR = 8.062 dB (IEEE 2022). Adecuados para bloques medianos.
+
+### Escenarios 5G/6G
+
+**URLLC (Ultra-Reliable Low Latency Communications)**  
+Comunicaciones de ultra confiabilidad y baja latencia. Objetivo: BER < 10⁻⁹, latencia < 1 ms. Aplicaciones: Vehículos autónomos, cirugía remota, automatización industrial.
+
+**eMBB (Enhanced Mobile Broadband)**  
+Banda ancha móvil mejorada. Objetivo: Velocidades > 1 Gbps, alta eficiencia espectral. Aplicaciones: Streaming 4K/8K, realidad aumentada/virtual, juegos en la nube.
+
+**mMTC (Massive Machine Type Communications)**  
+Comunicaciones masivas tipo máquina. Objetivo: > 1 millón dispositivos/km², bajo consumo energético. Aplicaciones: IoT, sensores, medidores inteligentes, smart cities.
+
+### Técnicas de Multiplexación
+
+**OFDM (Orthogonal Frequency Division Multiplexing)**  
+Multiplexación por división de frecuencias ortogonales. Divide canal en múltiples subportadoras. Estándar 4G/5G. Alta eficiencia espectral y resistencia a multi-trayecto.
+
+**OFDMA (Orthogonal Frequency Division Multiple Access)**  
+Extensión de OFDM para acceso múltiple. Asigna diferentes subportadoras a diferentes usuarios. Permite asignación dinámica de recursos.
+
+**F-OFDM (Filtered OFDM)**  
+OFDM con filtrado mejorado. Reduce emisiones fuera de banda. Usado en 5G Advanced para mejor aislamiento entre servicios y menor interferencia.
+
+**SC-FDMA (Single Carrier FDMA)**  
+FDMA de portadora única. Similar a OFDMA pero con menor PAPR. Preferido para uplink (transmisión del dispositivo) por menor consumo de batería.
+
+**NOMA (Non-Orthogonal Multiple Access)**  
+Acceso múltiple no ortogonal. Superpone múltiples usuarios en mismo recurso tiempo-frecuencia. Propuesto para 6G para aumentar capacidad y eficiencia.
+
+### Métricas de Rendimiento
+
+**Throughput Efectivo**  
+Velocidad de datos real considerando errores y overhead de codificación. Calculado como: Throughput = DataRate × (1 - BER) / FEC_Overhead.
+
+**Eficiencia Espectral**  
+Cantidad de bits transmitidos por Hz de ancho de banda por segundo (bits/s/Hz). Mayor eficiencia = Mejor uso del espectro. Calculada como: η = (k × R_código × (1 - BER)) / B.
+
+**Ganancia de Codificación**  
+Beneficio en dB obtenido al usar FEC. Expresa cuánto puede reducirse Eb/N0 manteniendo mismo BER. Ganancia típica: 2-3 dB (Hamming) hasta 6-7 dB (Polar).
+
+**Overhead de FEC**  
+Redundancia agregada por la codificación. Expresado como ratio (ej: 2x significa el doble de bits). Hamming (7,4) = 1.75x, Turbo = 3x. Mayor overhead = Mayor protección pero menor throughput.
+
+### Algoritmos de Decodificación
+
+**Hard Decision**  
+Decisión dura. El demodulador decide si cada bit es 0 o 1 antes de decodificar FEC. Simple y rápido pero subóptimo.
+
+**Soft Decision (LLR)**  
+Decisión suave con Log-Likelihood Ratios. El demodulador proporciona probabilidades o "confianzas" en lugar de decisiones binarias. Mejora ganancia de codificación ~2 dB. Usado en LDPC y Turbo.
+
+**CA-SCL (CRC-Aided Successive Cancellation List)**  
+Lista de cancelación sucesiva ayudada por CRC. Algoritmo de decodificación para Polar Codes. Proporciona mejor rendimiento que decodificación SC estándar según IEEE 2024.
+
+### Términos Adicionales
+
+**Constelación**  
+Diagrama que muestra todos los símbolos posibles en un esquema de modulación en el plano complejo I-Q. Puntos más separados = Más robusta. Más puntos = Mayor capacidad.
+
+**FFT (Fast Fourier Transform)**  
+Transformada Rápida de Fourier. Algoritmo para convertir señales del dominio del tiempo al dominio de la frecuencia. Fundamental para análisis espectral y OFDM.
+
+**PSD (Power Spectral Density)**  
+Densidad Espectral de Potencia. Muestra cómo se distribuye la potencia de una señal a través del espectro de frecuencias. Unidad: W/Hz o dB/Hz.
+
+**Límite de Shannon**  
+Capacidad máxima teórica de un canal de comunicaciones según el teorema de Claude Shannon. C = B × log₂(1 + SNR). Ningún sistema real puede superar este límite.
+
+**3GPP (3rd Generation Partnership Project)**  
+Organización que desarrolla protocolos de comunicaciones móviles. Responsable de estándares 3G/4G/5G. Define especificaciones técnicas para sistemas celulares globales.
+
+**IEEE (Institute of Electrical and Electronics Engineers)**  
+Instituto de Ingenieros Eléctricos y Electrónicos. Organización que publica investigaciones de vanguardia y define estándares en telecomunicaciones, incluyendo Wi-Fi y otros.
+
+---
+
 ## Agradecimientos
 
 - **IEEE** por proporcionar acceso a investigaciones de vanguardia

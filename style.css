@@ -363,3 +363,33 @@ footer {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Chart explanations */
+.chart-explanation {
+    background-color: #f8f9fa;
+    border-left: 4px solid #667eea;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.chart-explanation p {
+    margin: 8px 0;
+}
+
+.chart-explanation strong {
+    color: #667eea;
+    font-weight: 600;
+}
+
+.chart-explanation ul {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.chart-explanation li {
+    margin: 4px 0;
+}
+}
