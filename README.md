@@ -20,98 +20,91 @@ Este simulador permite analizar y comparar el desempeño de sistemas de comunica
 - **5G Avanzado**: Mejoras con F-OFDM, 64-QAM y LDPC optimizado
 - **6G**: Tecnología de próxima generación con Polar Codes, 256-QAM y NOMA
 
-### 2. Parámetros Configurables
+### 2. Interfaz de Usuario Simplificada
 
-#### Parámetros de Señal
-- **Eb/N0 (dB)**: Rango extendido de **-5 a 15 dB** (según especificaciones IEEE)
-- **Velocidad de Datos**: 1 Mbps a 10 Gbps
-- **Potencia de Señal**: Calculada automáticamente basada en la modulación
-- **Potencia de Ruido**: Determinada por Eb/N0 y la velocidad de datos
+El simulador presenta una interfaz minimalista donde el usuario solo necesita seleccionar:
 
-#### Modulación (6 esquemas)
-- **BPSK** (Binary Phase Shift Keying): 1 bit/símbolo - Máxima robustez
-- **QPSK** (Quadrature Phase Shift Keying): 2 bits/símbolo - Balance robustez/eficiencia
-- **8-PSK**: 3 bits/símbolo - **Nuevo**, intermedio entre QPSK y 16-QAM
+#### Parámetros Configurables por el Usuario
+1. **Tecnología**: Selector con 3 opciones (5G, 5G Avanzado, 6G)
+2. **Eb/N0 (dB)**: Control deslizante de -5 a 15 dB
+3. **Velocidad de Datos**: Control deslizante de 1 a 10000 Mbps
+
+Al seleccionar una tecnología, el simulador configura automáticamente:
+- **5G**: QPSK, LDPC, OFDM, Canal AWGN
+- **5G Avanzado**: 64-QAM, LDPC, F-OFDM, Canal AWGN
+- **6G**: 256-QAM, Polar Codes, NOMA, Canal AWGN
+
+### 3. Técnicas y Esquemas Implementados
+
+El simulador incluye en las comparaciones automáticas:
+
+#### Modulaciones (6 esquemas)
+- **BPSK**: 1 bit/símbolo - Máxima robustez
+- **QPSK**: 2 bits/símbolo - Balance robustez/eficiencia (usado en 5G)
+- **8-PSK**: 3 bits/símbolo - Intermedio
 - **16-QAM**: 4 bits/símbolo - Alta eficiencia
-- **64-QAM**: 6 bits/símbolo - 5G estándar
-- **256-QAM**: 8 bits/símbolo - 6G, máxima eficiencia espectral
+- **64-QAM**: 6 bits/símbolo - 5G estándar (usado en 5G Avanzado)
+- **256-QAM**: 8 bits/símbolo - 6G (usado en 6G)
 
-#### Tipo de Canal
-- **AWGN** (Additive White Gaussian Noise): Canal ideal con solo ruido blanco
-- **Rayleigh**: Desvanecimiento sin línea de visión directa (NLOS) - Peor caso
-- **Rician**: Desvanecimiento con línea de visión directa (LOS), factor K configurable
-
-#### Técnicas de Control de Errores (FEC) - 7 técnicas
+#### Técnicas FEC (7 técnicas comparadas)
 - **Ninguna**: Sin codificación (baseline)
 - **Hamming (7,4)**: Código de bloque simple, PAPR bajo (6.524 dB)
-- **BCH**: Códigos cíclicos, **nuevo**, buenos para ráfagas de errores
-- **Reed-Solomon**: Códigos no binarios, **nuevo**, corrección de ráfagas
-- **LDPC** (Low-Density Parity-Check): Usado en 5G/5G Advanced, con LLR
-- **Polar Codes**: Código de canal usado en 5G NR y 6G, óptimo para bloques cortos
-- **Turbo Codes**: Código convolucional avanzado, compatibilidad 4G/5G
+- **BCH**: Códigos cíclicos, buenos para ráfagas de errores
+- **Reed-Solomon**: Códigos no binarios, corrección de ráfagas
+- **LDPC**: Usado en 5G/5G Advanced (configurado automáticamente)
+- **Polar Codes**: Usado en 6G (configurado automáticamente), óptimo para bloques cortos
+- **Turbo Codes**: Compatibilidad 4G/5G
 
-#### Algoritmo de Decodificación - **Nuevo**
-- **Hard Decision**: Decisiones binarias, menor complejidad
-- **Soft Decision (LLR)**: Usa información de confiabilidad, ~2-3 dB mejor rendimiento
+#### Tipos de Canal (3 modelos comparados)
+- **AWGN**: Canal ideal con solo ruido blanco (usado por defecto)
+- **Rayleigh**: Desvanecimiento sin línea de visión directa (NLOS) - Peor caso
+- **Rician**: Desvanecimiento con línea de visión directa (LOS), factor K=10 dB
 
-#### Multiplexación
-- **OFDM** (Orthogonal Frequency Division Multiplexing): Estándar 4G/5G
-- **OFDMA** (OFDM Access): Acceso múltiple basado en OFDM
-- **F-OFDM** (Filtered OFDM): **5G Advanced**, mejor aislamiento entre subportadoras
-- **SC-FDMA** (Single Carrier FDMA): Menor PAPR para uplink
-- **NOMA** (Non-Orthogonal Multiple Access): **6G**, multiplexación no ortogonal
+#### Técnicas de Multiplexación
+- **OFDM**: Estándar 4G/5G (usado en 5G)
+- **F-OFDM**: 5G Advanced (usado en 5G Avanzado), mejor aislamiento entre subportadoras
+- **NOMA**: 6G (usado en 6G), multiplexación no ortogonal
 
-#### Velocidad de Datos
-- Rango configurable: 1 Mbps - 10 Gbps
-- Afecta directamente el SNR y BER
-- Calcula throughput efectivo considerando BER y FEC overhead
-
-#### Escenarios Predefinidos - **Nuevo**
+#### Escenarios 5G/6G Analizados
 - **URLLC** (Ultra-Reliable Low Latency): Eb/N0=12 dB, QPSK, Polar, Rician
 - **eMBB** (Enhanced Mobile Broadband): Eb/N0=10 dB, 64-QAM, LDPC, AWGN
 - **mMTC** (Massive Machine Type Communications): Eb/N0=5 dB, BPSK, Turbo, Rayleigh
 
-### 3. Visualización de Resultados
+### 5. Visualización de Resultados
 
-#### Métricas en Tiempo Real - **Ampliadas**
+#### Métricas Mostradas en Tiempo Real
 - **BER Simulado**: Tasa de error de bit medida
 - **BER Teórico**: Basado en fórmulas analíticas
 - **Ganancia de Codificación**: Mejora en dB gracias a FEC
-- **Throughput Efectivo**: **Nuevo** - Tasa de bits real (Mbps)
-- **Eficiencia Espectral**: **Nuevo** - bits/s/Hz
-- **PAPR**: **Nuevo** - Relación potencia pico/promedio (dB)
-- **EVM**: **Nuevo** - Error Vector Magnitude (%)
+- **Throughput Efectivo**: Tasa de bits real (Mbps)
+- **Eficiencia Espectral**: bits/s/Hz
+- **PAPR**: Relación potencia pico/promedio (dB)
+- **EVM**: Error Vector Magnitude (%)
 
-#### Gráficas en Tiempo Real
-- **Gráfica BER vs Eb/N0**: Comparación entre BER teórico y simulado con historial
-- **Constelación con EVM**: Visualización de símbolos modulados antes y después del canal
-- **PAPR por Técnica**: Comparación de eficiencia energética implementada
-- **Análisis Espectral (FFT)**: Densidad espectral de potencia implementada
-- **Throughput y Eficiencia**: Gráficas de rendimiento en tiempo real implementadas
+#### Gráficas Generadas Automáticamente
+- **BER vs Eb/N0**: Comparación entre BER teórico y simulado con historial
+- **Constelación con EVM**: Símbolos modulados antes y después del canal
+- **PAPR por Técnica**: Comparación de eficiencia energética
+- **Análisis Espectral (FFT)**: Densidad espectral de potencia
+- **Throughput por Modulación**: Rendimiento en función de la modulación
+- **Comparación de Canales**: Gráfica de barras AWGN vs Rayleigh vs Rician
+- **Curvas BER-FEC**: Todas las técnicas FEC en un solo gráfico estilo IEEE
 
 #### Tablas Comparativas
-- **Tabla de Resultados**: Todos los parámetros y resultados de la simulación
+- **Resultados de Simulación**: Todos los parámetros y métricas
 - **Comparación de Tecnologías**: 5G, 5G Advanced y 6G lado a lado
-- **Efectividad de FEC**: Todas las técnicas comparadas con porcentaje de mejora
-- **Comparación de Canales**: AWGN, Rayleigh y Rician
-
-### 4. Herramientas Avanzadas - **Nuevas**
-
-#### Motor de Optimización Automática
-- Encuentra la configuración óptima de FEC + Eb/N0
-- Objetivo: BER < 10⁻⁶ con mínimo consumo de potencia
-- Prueba todas las técnicas FEC disponibles
-- Recomienda la mejor opción para el canal seleccionado
+- **Efectividad de FEC**: Las 7 técnicas con porcentaje de mejora
+- **Escenarios 5G/6G**: URLLC, eMBB y mMTC con sus métricas
 
 #### Análisis de Señales
 - Visualización de bits de entrada vs salida
 - Conteo detallado de errores de bit
-- Detección de patrones de error
-- Comparación visual con colores
+- Comparación visual con diferencias resaltadas
 
-#### Sistema de Exportación
-- Exportar resultados en formato JSON
-- Histórico de simulaciones guardado
+#### Exportación de Datos
+- Botón "Exportar Resultados (JSON)"
+- Guarda historial completo de simulaciones
+- Incluye todos los parámetros y métricas para análisis posterior
 
 ## Fundamentos Teóricos Basados en Investigaciones IEEE
 
@@ -349,92 +342,40 @@ Ganancia FEC (dB) = 10 · log₁₀(BER_sin_FEC / BER_con_FEC)
 
 ### Inicio Rápido
 
-1. Abra `index.html` en un navegador moderno (Chrome, Firefox, Edge)
-2. Seleccione un escenario predefinido o configure manualmente
-3. Haga clic en "Simular" para ver resultados instantáneos
-4. Explore las diferentes pestañas: Resultados, Gráficas, Comparación, Señales
+1. **Abrir**: `index.html` en un navegador moderno (Chrome, Firefox, Edge, Safari)
+2. **Seleccionar tecnología**: Elegir entre 5G, 5G Avanzado o 6G
+3. **Ajustar parámetros** (opcional):
+   - **Eb/N0**: Control deslizante de -5 a 15 dB (predeterminado: 10 dB)
+   - **Velocidad de Datos**: Control deslizante de 1 a 10000 Mbps (predeterminado: 100 Mbps)
+4. **Simular**: Clic en **"🚀 Simular y Comparar Todo"**
+5. **Explorar resultados**: Navegar por las pestañas Resultados, Gráficas, Comparación y Señales
 
-### Guía Detallada
+**Tiempo de ejecución**: ~40-60 segundos para completar todas las comparaciones
 
-#### 1. Selección de Tecnología
-Seleccione la tecnología que desea simular:
-- **5G**: Para estándares actuales (LDPC + QPSK por defecto)
-- **5G Advanced**: Para evolución de 5G (F-OFDM + 64-QAM + LDPC)
-- **6G**: Para tecnología futura (NOMA + 256-QAM + Polar)
+### Configuración Automática por Tecnología
 
-**Nota**: Seleccionar una tecnología ajusta automáticamente modulación, FEC y multiplexación óptimas.
+Al seleccionar una tecnología, el simulador configura automáticamente los parámetros óptimos:
 
-#### 2. Uso de Escenarios Predefinidos - **Recomendado para Principiantes**
+#### 5G (Estándar Actual)
+- **Modulación**: QPSK (2 bits/símbolo)
+- **FEC**: LDPC (Low-Density Parity-Check)
+- **Multiplexación**: OFDM
+- **Canal**: AWGN
+- **Uso**: Comunicaciones confiables, balance entre robustez y capacidad
 
-El simulador incluye 3 escenarios optimizados según especificaciones 3GPP:
+#### 5G Avanzado (Evolución)
+- **Modulación**: 64-QAM (6 bits/símbolo)
+- **FEC**: LDPC optimizado
+- **Multiplexación**: F-OFDM (Filtered OFDM)
+- **Canal**: AWGN
+- **Uso**: Mayor capacidad, streaming 4K, múltiples dispositivos
 
-**URLLC (Ultra-Reliable Low Latency Communications)**:
-- **Aplicaciones**: Vehículos autónomos, cirugía remota, control industrial
-- **Configuración**: Eb/N0=12 dB, QPSK, Polar Codes, Canal Rician
-- **Objetivo**: BER < 10⁻⁹, latencia < 1ms
-- **Por qué**: Máxima confiabilidad, modulación robusta, canal típico de vehicular
-
-**eMBB (Enhanced Mobile Broadband)**:
-- **Aplicaciones**: Streaming 4K/8K, realidad virtual/aumentada, descarga masiva
-- **Configuración**: Eb/N0=10 dB, 64-QAM, LDPC, Canal AWGN
-- **Objetivo**: Máximo throughput, BER < 10⁻⁶
-- **Por qué**: Alta eficiencia espectral, condiciones de canal ideales
-
-**mMTC (Massive Machine Type Communications)**:
-- **Aplicaciones**: IoT, sensores, smart cities, agricultura inteligente
-- **Configuración**: Eb/N0=5 dB, BPSK, Turbo Codes, Canal Rayleigh
-- **Objetivo**: Bajo consumo energético, cobertura amplia
-- **Por qué**: Modulación simple, canal hostil típico de IoT, FEC robusto
-
-#### 3. Configuración Manual de Parámetros
-
-**Paso a Paso**:
-
-a) **Ajustar Eb/N0** (-5 a 15 dB):
-   - Valores bajos (-5 a 0 dB): Condiciones muy hostiles, alto BER
-   - Valores medios (5 a 10 dB): Condiciones típicas de operación
-   - Valores altos (10 a 15 dB): Condiciones ideales, BER muy bajo
-
-b) **Seleccionar Modulación**:
-   - Mayor orden → Mayor throughput → Requiere mayor Eb/N0
-   - Use el selector de escenarios como guía
-   - Experimente aumentando gradualmente el orden
-
-c) **Elegir Tipo de Canal**:
-   - AWGN: Para análisis teórico y límites superiores
-   - Rayleigh: Para entornos urbanos densos (NLOS)
-   - Rician: Para áreas suburbanas/rurales (LOS)
-   - Ajuste Factor K (solo Rician): K alto → Mejor rendimiento
-
-d) **Seleccionar Técnica FEC**:
-   - Ninguna: Para establecer baseline
-   - Hamming: Baja complejidad, IoT
-   - BCH/Reed-Solomon: Corrección de ráfagas
-   - LDPC: Estándar 5G, buen balance
-   - Polar: Mejor rendimiento, 5G NR/6G
-   - Turbo: Compatibilidad 4G/5G
-
-e) **Algoritmo de Decodificación**:
-   - Hard Decision: Rápido, menor rendimiento
-   - Soft Decision (LLR): Más lento, ~2-3 dB mejor
-
-f) **Velocidad de Datos**:
-   - Ajuste según aplicación
-   - Afecta throughput efectivo y eficiencia espectral
-
-#### 4. Ejecutar Simulación
-
-Haga clic en **"🚀 Simular y Comparar Todo"** para ejecutar automáticamente:
-- Simulación base con la configuración seleccionada (2000 bits aleatorios)
-- Comparación de las 7 técnicas FEC (Ninguna, Hamming, BCH, Reed-Solomon, LDPC, Polar, Turbo)
-- Comparación de los 3 tipos de canal (AWGN, Rayleigh, Rician)
-- Comparación de tecnologías (5G, 5G Advanced, 6G)
-- Comparación de escenarios 5G/6G (URLLC, eMBB, mMTC)
-- Generación de todas las gráficas (BER, Constelación, PAPR, Espectro, Throughput)
-
-**Tiempo de ejecución**: ~40-60 segundos para simulación completa
-
-El simulador cambiará automáticamente a la pestaña "Comparación" al finalizar.
+#### 6G (Próxima Generación)
+- **Modulación**: 256-QAM (8 bits/símbolo)
+- **FEC**: Polar Codes
+- **Multiplexación**: NOMA (Non-Orthogonal Multiple Access)
+- **Canal**: AWGN
+- **Uso**: Máxima eficiencia espectral, aplicaciones futuras (hologramas, metaverso)
 
 #### 5. Analizar Resultados
 
@@ -513,20 +454,25 @@ Click en **"Exportar Resultados (JSON)"** para:
 }
 ```
 
-### Tips de Uso
+### Sugerencias de Uso
 
-**Para Demostraciones**:
-1. Comience con escenario URLLC para mostrar confiabilidad
-2. Cambie a eMBB para mostrar alta capacidad
-3. Use "Comparar Tecnologías" para mostrar evolución
+**Para Demostraciones y Presentaciones**:
+1. Seleccione 5G con Eb/N0=10 dB como punto de partida
+2. Ejecute la simulación completa para mostrar todas las comparaciones
+3. Navegue por las pestañas para mostrar diferentes aspectos (Gráficas, Comparación)
+4. Destaque las diferencias entre tecnologías en la tabla de comparación
 
-**Para Investigación**:
-1. Use "Personalizado" con configuración específica
-2. Varíe sistemáticamente un parámetro a la vez
-3. Exporte resultados para análisis estadístico
+**Para Análisis e Investigación**:
+1. Experimente con diferentes valores de Eb/N0 (use el control deslizante)
+2. Compare los resultados entre las 3 tecnologías (5G, 5G-A, 6G)
+3. Observe las curvas BER vs Eb/N0 para entender el comportamiento de cada técnica FEC
+4. Exporte los resultados en JSON para análisis posterior con Python, MATLAB o Excel
 
 **Para Aprendizaje**:
-1. Comience con BPSK + AWGN + Sin FEC (más simple)
+1. Comience con 5G (configuración más simple: QPSK + LDPC)
+2. Observe cómo el BER disminuye al aumentar Eb/N0
+3. Compare 5G vs 6G para ver el trade-off entre eficiencia espectral y robustez
+4. Estudie las gráficas de constelación para visualizar el efecto del ruido
 2. Agregue FEC y observe ganancia de codificación
 3. Cambie a canal Rayleigh y vea degradación
 4. Aumente orden de modulación y observe trade-off
