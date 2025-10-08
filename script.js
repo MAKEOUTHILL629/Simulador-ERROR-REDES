@@ -64,15 +64,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const paramsTable = document.getElementById('params-table');
 
     // --- Event Listeners ---
-    simulateBtn.addEventListener('click', runSimulation);
-    compareBtn.addEventListener('click', compareTechnologies);
-    compareChannelsBtn.addEventListener('click', compareChannelsAndFEC);
-    const optimizeBtn = document.getElementById('optimizeBtn');
-    optimizeBtn.addEventListener('click', optimizeParameters);
+    simulateBtn.addEventListener('click', runComprehensiveSimulation);
     exportBtn.addEventListener('click', exportResults);
     
-    channelSelect.addEventListener('change', () => {
-        ricianKGroup.style.display = (channelSelect.value === 'rician') ? 'block' : 'none';
+    // Remove old button references - buttons no longer exist
+    // channelSelect, modulationSelect, fecSelect, etc. are now hidden inputs
+    
+    // Technology selection updates hidden parameters automatically
+    technologySelect.addEventListener('change', () => {
+        updateParametersForTechnology(technologySelect.value);
     });
     
     ebn0Input.addEventListener('input', () => {
@@ -82,54 +82,34 @@ document.addEventListener('DOMContentLoaded', () => {
     dataRateInput.addEventListener('input', () => {
         dataRateValueSpan.textContent = dataRateInput.value;
     });
-    
-    ricianKInput.addEventListener('input', () => {
-        ricianKValueSpan.textContent = ricianKInput.value;
-    });
 
-    // Technology-specific defaults
-    technologySelect.addEventListener('change', () => {
-        const tech = technologySelect.value;
+    // Function to update parameters based on technology
+    function updateParametersForTechnology(tech) {
+        const modulationInput = document.getElementById('modulation');
+        const fecInput = document.getElementById('fec');
+        const multiplexingInput = document.getElementById('multiplexing');
+        const channelInput = document.getElementById('channel');
+        
         if (tech === '5g') {
-            modulationSelect.value = 'qpsk';
-            fecSelect.value = 'ldpc';
+            modulationInput.value = 'qpsk';
+            fecInput.value = 'ldpc';
+            multiplexingInput.value = 'ofdm';
+            channelInput.value = 'awgn';
         } else if (tech === '5g-advanced') {
-            modulationSelect.value = '64qam';
-            fecSelect.value = 'ldpc';
-            multiplexingSelect.value = 'f-ofdm';
+            modulationInput.value = '64qam';
+            fecInput.value = 'ldpc';
+            multiplexingInput.value = 'f-ofdm';
+            channelInput.value = 'awgn';
         } else if (tech === '6g') {
-            modulationSelect.value = '256qam';
-            fecSelect.value = 'polar';
-            multiplexingSelect.value = 'noma';
+            modulationInput.value = '256qam';
+            fecInput.value = 'polar';
+            multiplexingInput.value = 'noma';
+            channelInput.value = 'awgn';
         }
-    });
+    }
 
-    // Scenario presets
-    scenarioSelect.addEventListener('change', () => {
-        const scenario = scenarioSelect.value;
-        if (scenario === 'urllc') {
-            // Ultra-Reliable Low Latency Communications
-            ebn0Input.value = '12';
-            ebn0ValueSpan.textContent = '12';
-            modulationSelect.value = 'qpsk';
-            fecSelect.value = 'polar';
-            channelSelect.value = 'rician';
-        } else if (scenario === 'embb') {
-            // Enhanced Mobile Broadband
-            ebn0Input.value = '10';
-            ebn0ValueSpan.textContent = '10';
-            modulationSelect.value = '64qam';
-            fecSelect.value = 'ldpc';
-            channelSelect.value = 'awgn';
-        } else if (scenario === 'mmtc') {
-            // Massive Machine Type Communications
-            ebn0Input.value = '5';
-            ebn0ValueSpan.textContent = '5';
-            modulationSelect.value = 'bpsk';
-            fecSelect.value = 'turbo';
-            channelSelect.value = 'rayleigh';
-        }
-    });
+    // Initialize default technology parameters
+    updateParametersForTechnology(technologySelect.value);
 
     // Tab functionality
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -1546,5 +1526,264 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             alert('No se pudo encontrar una configuración que alcance el BER objetivo de 1e-6.\nIntente con una modulación más robusta o mejore las condiciones del canal.');
         }
+    }
+
+    // --- Comprehensive Simulation Function ---
+    async function runComprehensiveSimulation() {
+        // Show loading message
+        const simulateBtn = document.getElementById('simulateBtn');
+        simulateBtn.disabled = true;
+        simulateBtn.textContent = '⏳ Simulando... Por favor espere';
+        
+        // Get user inputs
+        const ebn0_db = parseFloat(ebn0Input.value);
+        const technology = technologySelect.value;
+        const dataRate = parseFloat(dataRateInput.value);
+        
+        // Get current parameters based on technology
+        const modulationInput = document.getElementById('modulation');
+        const channelInput = document.getElementById('channel');
+        const fecInput = document.getElementById('fec');
+        const modulation = modulationInput.value;
+        const channel = channelInput.value;
+        
+        try {
+            // Step 1: Run base simulation with current technology
+            simulateBtn.textContent = '⏳ Paso 1/4: Simulación base...';
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            fecInput.value = 'none'; // Start with no FEC for base
+            runSimulation();
+            
+            // Step 2: Compare all FEC techniques
+            simulateBtn.textContent = '⏳ Paso 2/4: Comparando técnicas FEC...';
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await runFECComparison(ebn0_db, modulation, channel, dataRate);
+            
+            // Step 3: Compare all channel types
+            simulateBtn.textContent = '⏳ Paso 3/4: Comparando tipos de canal...';
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await runChannelComparison(ebn0_db, modulation, dataRate);
+            
+            // Step 4: Compare scenarios
+            simulateBtn.textContent = '⏳ Paso 4/4: Comparando escenarios 5G/6G...';
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await runScenarioComparison(dataRate);
+            
+            // Switch to comparison tab to show results
+            document.querySelector('[data-tab="comparison-tab"]').click();
+            
+            alert('✅ Simulación completa!\n\nSe generaron todas las comparaciones:\n• Técnicas FEC (7 curvas)\n• Tipos de Canal (3 comparaciones)\n• Escenarios 5G/6G (URLLC, eMBB, mMTC)\n\nRevise la pestaña "Comparación" para ver los resultados.');
+            
+        } catch (error) {
+            console.error('Error en simulación:', error);
+            alert('❌ Error durante la simulación. Por favor revise la consola para más detalles.');
+        } finally {
+            simulateBtn.disabled = false;
+            simulateBtn.textContent = '🚀 Simular y Comparar Todo';
+        }
+    }
+
+    // Run FEC comparison for all techniques
+    async function runFECComparison(ebn0_db, modulation, channel, dataRate) {
+        const k_factor_db = 10;
+        const ebn0Range = [];
+        for (let ebn0 = -5; ebn0 <= 15; ebn0 += 2) {
+            ebn0Range.push(ebn0);
+        }
+        
+        const fecTechniques = ['none', 'hamming', 'bch', 'reed-solomon', 'ldpc', 'polar', 'turbo'];
+        const fecCurvesData = [];
+        
+        for (const fec of fecTechniques) {
+            const fecData = {
+                name: fec,
+                displayName: getFECDisplayName(fec),
+                points: []
+            };
+            
+            for (const ebn0 of ebn0Range) {
+                const numBits = 1000; // Reduced for speed
+                const originalBits = generateRandomBits(numBits);
+                
+                let encodedBits = originalBits;
+                let decodeFn = (bits) => bits.substring(0, numBits);
+                
+                if (fec === 'hamming') {
+                    encodedBits = hammingEncode(originalBits);
+                    decodeFn = hammingDecode;
+                } else if (fec === 'bch') {
+                    encodedBits = bchEncode(originalBits);
+                    decodeFn = bchDecode;
+                } else if (fec === 'reed-solomon') {
+                    encodedBits = reedSolomonEncode(originalBits);
+                    decodeFn = reedSolomonDecode;
+                } else if (fec === 'ldpc') {
+                    encodedBits = ldpcEncode(originalBits);
+                    decodeFn = ldpcDecode;
+                } else if (fec === 'polar') {
+                    encodedBits = polarEncode(originalBits);
+                    decodeFn = polarDecode;
+                } else if (fec === 'turbo') {
+                    encodedBits = turboEncode(originalBits);
+                    decodeFn = turboDecode;
+                }
+                
+                const { symbols, k } = modulate(encodedBits, modulation);
+                const noisySymbols = addNoise(symbols, ebn0, k, channel, k_factor_db);
+                const demodulatedBits = demodulate(noisySymbols, modulation);
+                const decodedBits = decodeFn(demodulatedBits);
+                
+                const errors = compareBits(originalBits, decodedBits);
+                const simulatedBer = errors / numBits;
+                
+                fecData.points.push({
+                    ebn0: ebn0,
+                    ber: simulatedBer > 0 ? simulatedBer : 1e-10
+                });
+            }
+            
+            fecCurvesData.push(fecData);
+            await new Promise(resolve => setTimeout(resolve, 10)); // Allow UI to update
+        }
+        
+        drawFECLinearComparisonChart(fecCurvesData);
+    }
+
+    // Run channel comparison
+    async function runChannelComparison(ebn0_db, modulation, dataRate) {
+        const channels = ['awgn', 'rayleigh', 'rician'];
+        const channelData = [];
+        
+        for (const chan of channels) {
+            const numBits = 2000;
+            const originalBits = generateRandomBits(numBits);
+            const { symbols, k } = modulate(originalBits, modulation);
+            const k_factor_db = 10;
+            const noisySymbols = addNoise(symbols, ebn0_db, k, chan, k_factor_db);
+            const demodulatedBits = demodulate(noisySymbols, modulation).substring(0, numBits);
+            
+            const errors = compareBits(originalBits, demodulatedBits);
+            const simulatedBer = errors / numBits;
+            const theoreticalBer = calculateTheoreticalBer(ebn0_db, modulation, chan);
+            
+            channelData.push({
+                channel: chan,
+                simulatedBer: simulatedBer,
+                theoreticalBer: theoreticalBer
+            });
+        }
+        
+        drawChannelComparisonChart(channelData);
+    }
+
+    // Run scenario comparison
+    async function runScenarioComparison(dataRate) {
+        const scenarios = [
+            { name: 'URLLC', ebn0: 12, modulation: 'qpsk', fec: 'polar', channel: 'rician' },
+            { name: 'eMBB', ebn0: 10, modulation: '64qam', fec: 'ldpc', channel: 'awgn' },
+            { name: 'mMTC', ebn0: 5, modulation: 'bpsk', fec: 'turbo', channel: 'rayleigh' }
+        ];
+        
+        const scenarioData = [];
+        
+        for (const scenario of scenarios) {
+            const numBits = 2000;
+            const originalBits = generateRandomBits(numBits);
+            
+            let encodedBits = originalBits;
+            let decodeFn = (bits) => bits.substring(0, numBits);
+            let fecOverhead = 1.0;
+            
+            if (scenario.fec === 'polar') {
+                encodedBits = polarEncode(originalBits);
+                decodeFn = polarDecode;
+                fecOverhead = 2.0;
+            } else if (scenario.fec === 'ldpc') {
+                encodedBits = ldpcEncode(originalBits);
+                decodeFn = ldpcDecode;
+                fecOverhead = 2.0;
+            } else if (scenario.fec === 'turbo') {
+                encodedBits = turboEncode(originalBits);
+                decodeFn = turboDecode;
+                fecOverhead = 3.0;
+            }
+            
+            const { symbols, k } = modulate(encodedBits, scenario.modulation);
+            const noisySymbols = addNoise(symbols, scenario.ebn0, k, scenario.channel, 10);
+            const demodulatedBits = demodulate(noisySymbols, scenario.modulation);
+            const decodedBits = decodeFn(demodulatedBits);
+            
+            const errors = compareBits(originalBits, decodedBits);
+            const simulatedBer = errors / numBits;
+            const theoreticalBer = calculateTheoreticalBer(scenario.ebn0, scenario.modulation, scenario.channel);
+            
+            const throughput = dataRate * (1 - simulatedBer) / fecOverhead;
+            const spectralEfficiency = (k * (1 - simulatedBer) / fecOverhead) / 1000;
+            
+            scenarioData.push({
+                scenario: scenario.name,
+                ebn0: scenario.ebn0,
+                modulation: scenario.modulation.toUpperCase(),
+                fec: scenario.fec.toUpperCase(),
+                channel: scenario.channel.toUpperCase(),
+                simulatedBer: simulatedBer,
+                theoreticalBer: theoreticalBer,
+                throughput: throughput.toFixed(2),
+                efficiency: spectralEfficiency.toFixed(3)
+            });
+        }
+        
+        updateScenarioComparisonTable(scenarioData);
+    }
+
+    // Update scenario comparison table
+    function updateScenarioComparisonTable(data) {
+        const tableBody = document.getElementById('scenario-comparison-body');
+        if (!tableBody) {
+            // Create table if it doesn't exist
+            const comparisonSection = document.querySelector('#comparison-tab .comparison-section');
+            const scenarioSection = document.createElement('div');
+            scenarioSection.innerHTML = `
+                <h3>Comparación de Escenarios 5G/6G</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Escenario</th>
+                            <th>Eb/N0 (dB)</th>
+                            <th>Modulación</th>
+                            <th>FEC</th>
+                            <th>Canal</th>
+                            <th>BER Simulado</th>
+                            <th>Throughput (Mbps)</th>
+                            <th>Eficiencia (bits/s/Hz)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scenario-comparison-body"></tbody>
+                </table>
+            `;
+            comparisonSection.appendChild(scenarioSection);
+        }
+        
+        const tbody = document.getElementById('scenario-comparison-body');
+        tbody.innerHTML = '';
+        
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${row.scenario}</strong></td>
+                <td>${row.ebn0}</td>
+                <td>${row.modulation}</td>
+                <td>${row.fec}</td>
+                <td>${row.channel}</td>
+                <td>${row.simulatedBer.toExponential(2)}</td>
+                <td>${row.throughput}</td>
+                <td>${row.efficiency}</td>
+            `;
+            tbody.appendChild(tr);
+        });
     }
 });

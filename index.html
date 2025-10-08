@@ -35,78 +35,26 @@
                 <input type="range" id="data-rate" min="1" max="10000" value="100" step="1">
             </div>
 
-            <div class="param-group">
-                <label for="modulation">Modulación:</label>
-                <select id="modulation">
-                    <option value="bpsk">BPSK</option>
-                    <option value="qpsk">QPSK</option>
-                    <option value="8psk">8-PSK</option>
-                    <option value="16qam">16-QAM</option>
-                    <option value="64qam">64-QAM</option>
-                    <option value="256qam">256-QAM</option>
-                </select>
+            <!-- Hidden parameters - set automatically based on technology -->
+            <input type="hidden" id="modulation" value="qpsk">
+            <input type="hidden" id="channel" value="awgn">
+            <input type="hidden" id="rician-k" value="10">
+            <input type="hidden" id="multiplexing" value="ofdm">
+            <input type="hidden" id="fec" value="none">
+            <input type="hidden" id="decoding" value="hard">
+            <input type="hidden" id="scenario" value="custom">
+
+            <div class="info-box">
+                <p><strong>Nota:</strong> Al hacer clic en "Simular", se generarán automáticamente todas las comparaciones:</p>
+                <ul>
+                    <li>✓ Comparación de todas las técnicas FEC (Sin FEC, Hamming, BCH, Reed-Solomon, LDPC, Polar, Turbo)</li>
+                    <li>✓ Comparación de todos los tipos de canal (AWGN, Rayleigh, Rician)</li>
+                    <li>✓ Comparación de los 3 escenarios 5G/6G (URLLC, eMBB, mMTC)</li>
+                </ul>
+                <p style="color: #f093fb; margin-top: 10px;">⏱️ Tiempo estimado: ~40-60 segundos</p>
             </div>
 
-            <div class="param-group">
-                <label for="channel">Tipo de Canal:</label>
-                <select id="channel">
-                    <option value="awgn">AWGN</option>
-                    <option value="rayleigh">Rayleigh</option>
-                    <option value="rician">Rician</option>
-                </select>
-            </div>
-
-            <div class="param-group" id="rician-k-group" style="display: none;">
-                <label for="rician-k">Factor K Rician (dB): <span id="rician-k-value">10</span></label>
-                <input type="range" id="rician-k" min="0" max="20" value="10" step="0.5">
-            </div>
-
-            <div class="param-group">
-                <label for="multiplexing">Multiplexación:</label>
-                <select id="multiplexing">
-                    <option value="ofdm">OFDM</option>
-                    <option value="ofdma">OFDMA</option>
-                    <option value="f-ofdm">F-OFDM (5G Advanced)</option>
-                    <option value="sc-fdma">SC-FDMA</option>
-                    <option value="noma">NOMA (6G)</option>
-                </select>
-            </div>
-
-            <div class="param-group">
-                <label for="fec">Técnica de Control de Errores (FEC):</label>
-                <select id="fec">
-                    <option value="none">Ninguna</option>
-                    <option value="hamming">Hamming (7,4)</option>
-                    <option value="bch">BCH</option>
-                    <option value="reed-solomon">Reed-Solomon</option>
-                    <option value="ldpc">LDPC</option>
-                    <option value="polar">Polar Codes</option>
-                    <option value="turbo">Turbo Codes</option>
-                </select>
-            </div>
-
-            <div class="param-group">
-                <label for="decoding">Algoritmo de Decodificación:</label>
-                <select id="decoding">
-                    <option value="hard">Hard Decision</option>
-                    <option value="soft">Soft Decision (LLR)</option>
-                </select>
-            </div>
-
-            <div class="param-group">
-                <label for="scenario">Escenario Predefinido:</label>
-                <select id="scenario">
-                    <option value="custom">Personalizado</option>
-                    <option value="urllc">URLLC (Ultra-Reliable Low Latency)</option>
-                    <option value="embb">eMBB (Enhanced Mobile Broadband)</option>
-                    <option value="mmtc">mMTC (Massive Machine Type Communications)</option>
-                </select>
-            </div>
-
-            <button id="simulateBtn">Simular</button>
-            <button id="compareBtn" class="secondary-btn">Comparar Tecnologías</button>
-            <button id="compareChannelsBtn" class="secondary-btn">Comparar Canales y FEC</button>
-            <button id="optimizeBtn" class="secondary-btn">Optimización Automática</button>
+            <button id="simulateBtn" class="primary-btn">🚀 Simular y Comparar Todo</button>
         </section>
 
         <section id="results">

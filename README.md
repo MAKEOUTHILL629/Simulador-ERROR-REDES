@@ -1659,6 +1659,254 @@ SOFTWARE.
 
 **Contacto**: Para preguntas, sugerencias o reportar problemas, por favor abra un issue en el repositorio de GitHub.
 
+## Casos de Prueba del Simulador
+
+Esta sección proporciona casos de prueba específicos para validar el funcionamiento del simulador y realizar análisis comparativos.
+
+### Caso de Prueba 1: Comparación Básica 5G
+
+**Objetivo**: Verificar que el simulador genera correctamente todas las comparaciones automáticas.
+
+**Pasos**:
+1. Abrir el simulador en el navegador
+2. Configurar parámetros:
+   - **Tecnología**: 5G
+   - **Eb/N0**: 10 dB
+   - **Velocidad de Datos**: 100 Mbps
+3. Hacer clic en **"🚀 Simular y Comparar Todo"**
+4. Esperar 40-60 segundos mientras completa los 4 pasos
+5. Verificar que aparece mensaje de completación exitosa
+
+**Resultados Esperados**:
+- ✅ Pestaña "Comparación" se activa automáticamente
+- ✅ Gráfica "Curvas BER vs Eb/N0" muestra 7 curvas (Sin FEC, Hamming, BCH, Reed-Solomon, LDPC, Polar, Turbo)
+- ✅ Tabla "Comparación de Tipo de Canal vs BER" muestra 3 filas (AWGN, Rayleigh, Rician)
+- ✅ Tabla "Comparación de Escenarios 5G/6G" muestra 3 filas (URLLC, eMBB, mMTC)
+
+**Valores de Referencia Aproximados** (pueden variar ligeramente):
+- **Sin FEC a Eb/N0=10dB**: BER ≈ 10⁻⁵ a 10⁻⁴
+- **Polar Codes a Eb/N0=10dB**: BER ≈ 10⁻⁶ a 10⁻⁷
+- **AWGN**: Mejor BER que Rayleigh (hasta 1000x mejor)
+- **URLLC**: BER más bajo debido a Eb/N0=12dB y Polar Codes
+
+### Caso de Prueba 2: Impacto del Eb/N0 en Rendimiento
+
+**Objetivo**: Analizar cómo diferentes valores de Eb/N0 afectan el desempeño del sistema.
+
+**Pasos**:
+1. Configurar:
+   - **Tecnología**: 5G
+   - **Eb/N0**: 5 dB (SNR bajo)
+   - **Velocidad de Datos**: 100 Mbps
+2. Ejecutar simulación completa
+3. Anotar BER de Polar Codes en la gráfica
+4. Repetir con **Eb/N0**: 10 dB
+5. Repetir con **Eb/N0**: 15 dB
+
+**Resultados Esperados**:
+| Eb/N0 | BER Polar (aprox) | Interpretación |
+|-------|-------------------|----------------|
+| 5 dB  | 10⁻² a 10⁻³      | Alto - No aceptable para datos críticos |
+| 10 dB | 10⁻⁵ a 10⁻⁶      | Moderado - Aceptable para voz/video |
+| 15 dB | 10⁻⁷ a 10⁻⁸      | Excelente - Ideal para URLLC |
+
+**Análisis**:
+- Incremento de 5 dB reduce BER en ~2-3 órdenes de magnitud
+- Demuestra trade-off entre potencia de transmisión y confiabilidad
+- Justifica por qué URLLC requiere Eb/N0=12dB
+
+### Caso de Prueba 3: Comparación de Tecnologías 5G vs 6G
+
+**Objetivo**: Evaluar diferencias de rendimiento entre generaciones.
+
+**Pasos**:
+1. Ejecutar simulación con:
+   - **Tecnología**: 5G
+   - **Eb/N0**: 10 dB
+   - **Velocidad de Datos**: 100 Mbps
+2. Anotar métricas de escenarios (URLLC, eMBB, mMTC)
+3. Ejecutar simulación con:
+   - **Tecnología**: 6G
+   - **Eb/N0**: 10 dB
+   - **Velocidad de Datos**: 100 Mbps
+4. Comparar resultados
+
+**Resultados Esperados 5G**:
+- **eMBB**: Modulación 64-QAM, LDPC, throughput ≈ 70-90 Mbps
+- **Eficiencia Espectral**: ~0.07-0.09 bits/s/Hz
+
+**Resultados Esperados 6G**:
+- **eMBB**: Modulación 256-QAM, Polar, throughput ≈ 90-95 Mbps (si BER es bajo)
+- **Eficiencia Espectral**: ~0.09-0.11 bits/s/Hz (mejora del 20-30%)
+
+**Análisis**:
+- 6G usa modulación más alta (256-QAM) → Mayor eficiencia espectral
+- Polar Codes en 6G tienen mejor rendimiento que LDPC en 5G a altos SNR
+- Trade-off: 256-QAM requiere mejor SNR para mantener BER bajo
+
+### Caso de Prueba 4: Efectividad de Técnicas FEC
+
+**Objetivo**: Cuantificar ganancia de codificación de cada técnica FEC.
+
+**Pasos**:
+1. Configurar:
+   - **Tecnología**: 5G
+   - **Eb/N0**: 8 dB (condiciones moderadas)
+   - **Velocidad de Datos**: 100 Mbps
+2. Ejecutar simulación completa
+3. En la gráfica "Curvas BER vs Eb/N0 - Comparación de Técnicas FEC", anotar BER de cada técnica a Eb/N0=8dB
+
+**Resultados Esperados** (ordenados de mejor a peor):
+| Técnica FEC | BER Aproximado a 8dB | Ganancia vs Sin FEC |
+|-------------|----------------------|---------------------|
+| Polar Codes | 10⁻⁵ a 10⁻⁶         | ~3-4 órdenes        |
+| Turbo Codes | 10⁻⁴ a 10⁻⁵         | ~2-3 órdenes        |
+| LDPC        | 10⁻⁴ a 10⁻⁵         | ~2-3 órdenes        |
+| Reed-Solomon| 10⁻³ a 10⁻⁴         | ~1-2 órdenes        |
+| BCH         | 10⁻³ a 10⁻⁴         | ~1-2 órdenes        |
+| Hamming     | 10⁻² a 10⁻³         | ~1 orden            |
+| Sin FEC     | 10⁻² a 10⁻¹         | N/A (baseline)      |
+
+**Análisis**:
+- Polar y Turbo son más efectivos para BER ultra-bajos (< 10⁻⁵)
+- Hamming es adecuado para aplicaciones menos críticas con menor overhead
+- Trade-off: Técnicas más potentes tienen mayor complejidad y overhead
+
+### Caso de Prueba 5: Impacto del Tipo de Canal
+
+**Objetivo**: Demostrar degradación de rendimiento por desvanecimiento.
+
+**Pasos**:
+1. Configurar:
+   - **Tecnología**: 5G
+   - **Eb/N0**: 10 dB
+   - **Velocidad de Datos**: 100 Mbps
+2. Ejecutar simulación completa
+3. Revisar tabla "Comparación de Tipo de Canal vs BER"
+
+**Resultados Esperados**:
+| Canal    | BER Simulado (aprox) | Degradación vs AWGN |
+|----------|----------------------|---------------------|
+| AWGN     | 10⁻⁵                | Referencia (mejor)  |
+| Rician   | 10⁻⁴                | ~10x peor           |
+| Rayleigh | 10⁻²                | ~1000x peor         |
+
+**Análisis**:
+- **AWGN**: Canal ideal, solo ruido gaussiano, mejor rendimiento
+- **Rician**: Línea de visión + dispersión, degradación moderada
+- **Rayleigh**: Sin línea de visión (NLOS), peor caso, BER muy alto
+- Demuestra importancia de FEC robusto en entornos urbanos (Rayleigh)
+
+### Caso de Prueba 6: Validación de Escenarios 5G/6G
+
+**Objetivo**: Verificar que los escenarios predefinidos cumplen sus objetivos de diseño.
+
+**Pasos**:
+1. Ejecutar simulación completa con cualquier configuración
+2. Revisar tabla "Comparación de Escenarios 5G/6G"
+3. Analizar métricas de cada escenario
+
+**Criterios de Validación**:
+
+**URLLC (Ultra-Reliable Low Latency)**:
+- ✅ Eb/N0: 12 dB (alto para confiabilidad)
+- ✅ Modulación: QPSK (robusta)
+- ✅ FEC: Polar Codes (mejor rendimiento)
+- ✅ Canal: Rician (LOS típico en aplicaciones críticas)
+- ✅ BER Objetivo: < 10⁻⁵ (cumple requisitos URLLC)
+- **Aplicaciones**: Vehículos autónomos, cirugía remota, control industrial
+
+**eMBB (Enhanced Mobile Broadband)**:
+- ✅ Eb/N0: 10 dB (balanceado)
+- ✅ Modulación: 64-QAM (alta eficiencia)
+- ✅ FEC: LDPC (estándar 5G para datos)
+- ✅ Canal: AWGN (condiciones favorables)
+- ✅ Throughput Objetivo: Maximizar Mbps
+- **Aplicaciones**: Streaming 4K/8K, AR/VR, gaming en la nube
+
+**mMTC (Massive Machine Type Communications)**:
+- ✅ Eb/N0: 5 dB (bajo consumo energético)
+- ✅ Modulación: BPSK (más robusta, menor consumo)
+- ✅ FEC: Turbo Codes (buen balance)
+- ✅ Canal: Rayleigh (entornos desafiantes)
+- ✅ BER Aceptable: 10⁻² a 10⁻³ (tolerable para sensores)
+- **Aplicaciones**: IoT, sensores, smart cities, agricultura de precisión
+
+**Análisis**:
+- Cada escenario está optimizado para su caso de uso específico
+- URLLC prioriza confiabilidad (BER bajo) sobre eficiencia
+- eMBB prioriza throughput y eficiencia espectral
+- mMTC prioriza bajo consumo energético y cobertura amplia
+
+### Caso de Prueba 7: Verificación de Fórmulas Teóricas
+
+**Objetivo**: Validar que las implementaciones coinciden con teoría.
+
+**Pasos**:
+1. Configurar:
+   - **Tecnología**: 5G
+   - **Eb/N0**: 10 dB
+   - **Velocidad de Datos**: 100 Mbps
+2. Ejecutar una simulación simple (no comparativa)
+3. Ir a pestaña "Resultados"
+4. Comparar BER Simulado vs BER Teórico
+
+**Validación de Fórmulas** (según README sección "Fórmulas Matemáticas"):
+- **BPSK/QPSK**: `BER_teórico = (1/2) · erfc(√(Eb/N0))`
+  - A Eb/N0=10dB (lineal=10): BER_teórico ≈ 3.87×10⁻⁶
+  - BER_simulado debe estar en rango [10⁻⁶, 10⁻⁵]
+  
+- **PAPR para Hamming**: 6.524 dB (según IEEE 2022)
+- **PAPR para Turbo**: 8.062 dB (según IEEE 2022)
+
+**Criterio de Aceptación**:
+- BER simulado dentro de ±1 orden de magnitud del teórico
+- Diferencia aceptable debido a tamaño de muestra finito (2000 bits)
+
+### Caso de Prueba 8: Rendimiento con Alta Velocidad de Datos
+
+**Objetivo**: Evaluar impacto de la velocidad de datos en métricas.
+
+**Pasos**:
+1. Ejecutar simulación con:
+   - **Tecnología**: 5G Advanced
+   - **Eb/N0**: 12 dB
+   - **Velocidad de Datos**: 1000 Mbps (1 Gbps)
+2. Anotar Throughput Efectivo y Eficiencia Espectral
+3. Repetir con **Velocidad de Datos**: 5000 Mbps (5 Gbps)
+
+**Resultados Esperados**:
+| Velocidad Config | Throughput Efectivo | Eficiencia Espectral |
+|------------------|---------------------|----------------------|
+| 1000 Mbps        | ~950-990 Mbps       | ~0.95-0.99 bits/s/Hz |
+| 5000 Mbps        | ~4750-4950 Mbps     | ~4.75-4.95 bits/s/Hz |
+
+**Análisis**:
+- Throughput efectivo = Velocidad × (1 - BER) / Overhead_FEC
+- A BER muy bajo (< 10⁻⁶), throughput ≈ velocidad configurada
+- Demuestra capacidad de 5G Advanced para soportar > 1 Gbps
+
+### Notas para Pruebas
+
+**Tiempos de Ejecución**:
+- Simulación completa: 40-60 segundos
+- Paso 1 (Base): ~1 segundo
+- Paso 2 (FEC): ~25-35 segundos (7 técnicas × 11 puntos Eb/N0)
+- Paso 3 (Canales): ~5-10 segundos
+- Paso 4 (Escenarios): ~5-10 segundos
+
+**Variabilidad de Resultados**:
+- Los valores BER pueden variar ±50% entre ejecuciones debido a naturaleza aleatoria
+- Para resultados más precisos, ejecutar múltiples veces y promediar
+- Tendencias relativas (orden de técnicas FEC) deben ser consistentes
+
+**Troubleshooting**:
+- Si simulación tarda > 90 segundos: Recargar página e intentar con Velocidad de Datos < 500 Mbps
+- Si gráficas no aparecen: Verificar que navegador soporta Canvas (Chrome 90+, Firefox 85+)
+- Si valores parecen erróneos: Verificar que Eb/N0 está en rango [-5, 15] dB
+
+**Contacto**: Para preguntas, sugerencias o reportar problemas, por favor abra un issue en el repositorio de GitHub.
+
 ## Agradecimientos
 
 - **IEEE** por proporcionar acceso a investigaciones de vanguardia
