@@ -1453,6 +1453,48 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText('Menor BER = Mejor desempeño', width / 2, height - 5);
     }
 
+    function populateFECValuesTable(curvesData) {
+        const tbody = document.getElementById('fec-values-body');
+        if (!tbody || !curvesData || curvesData.length === 0) return;
+        
+        tbody.innerHTML = '';
+        
+        // Get all Eb/N0 values from the first curve (they should all be the same)
+        const ebn0Values = curvesData[0].points.map(p => p.ebn0);
+        
+        // Create a row for each Eb/N0 value
+        ebn0Values.forEach(ebn0 => {
+            const tr = document.createElement('tr');
+            
+            // Eb/N0 column
+            const tdEbn0 = document.createElement('td');
+            tdEbn0.style.fontWeight = 'bold';
+            tdEbn0.textContent = ebn0.toFixed(1);
+            tr.appendChild(tdEbn0);
+            
+            // Add BER value for each FEC technique
+            curvesData.forEach(fecData => {
+                const point = fecData.points.find(p => p.ebn0 === ebn0);
+                const td = document.createElement('td');
+                if (point) {
+                    const ber = point.ber;
+                    if (ber >= 0.01) {
+                        td.textContent = ber.toFixed(4);
+                    } else if (ber >= 1e-6) {
+                        td.textContent = ber.toExponential(2);
+                    } else {
+                        td.textContent = '< 1e-6';
+                    }
+                } else {
+                    td.textContent = 'N/A';
+                }
+                tr.appendChild(td);
+            });
+            
+            tbody.appendChild(tr);
+        });
+    }
+
     function optimizeParameters() {
         const targetBer = 1e-6;
         const channel = channelSelect.value;
@@ -1557,7 +1599,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Draw additional charts
             drawPAPRChart();
-            drawThroughputChart();
             
             // Step 2: Compare all FEC techniques
             simulateBtn.textContent = '⏳ Paso 2/5: Comparando técnicas FEC...';
@@ -1585,13 +1626,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await runScenarioComparison(dataRate);
             
             // Draw spectrum chart if symbols are available
-            if (simulationHistory.length > 0) {
-                // Generate symbols for spectrum analysis
-                const numBits = 256;
-                const bits = generateRandomBits(numBits);
-                const { symbols } = modulate(bits, modulation);
-                drawSpectrumChart(symbols);
-            }
+            // Removed - spectrum chart no longer needed
             
             // Switch to comparison tab to show results
             document.querySelector('[data-tab="comparison-tab"]').click();
@@ -1671,6 +1706,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         drawFECLinearComparisonChart(fecCurvesData);
+        populateFECValuesTable(fecCurvesData);
     }
 
     // Run channel comparison
@@ -1819,9 +1855,55 @@ document.addEventListener('DOMContentLoaded', () => {
         
         ctx.clearRect(0, 0, width, height);
         
-        // PAPR values for different modulations (theoretical/simulated)
-        const modulations = ['BPSK', 'QPSK', '8-PSK', '16-QAM', '64-QAM', '256-QAM'];
-        const paprValues = [0, 0, 3.01, 4.77, 7.78, 9.03]; // dB values
+        // Get current modulation and FEC settings
+        const currentModulation = document.getElementById('modulation').value;
+        const currentFec = document.getElementById('fec').value;
+        
+        // All available modulations in the simulator
+        const modulations = [
+            { key: 'bpsk', label: 'BPSK' },
+            { key: 'qpsk', label: 'QPSK' },
+            { key: '8psk', label: '8-PSK' },
+            { key: '16qam', label: '16-QAM' },
+            { key: '64qam', label: '64-QAM' },
+            { key: '256qam', label: '256-QAM' }
+        ];
+        
+        // All FEC techniques
+        const fecTechniques = ['none', 'hamming', 'bch', 'reed-solomon', 'ldpc', 'polar', 'turbo'];
+        
+        // Calculate PAPR for each modulation with current FEC
+        const paprValues = [];
+        const labels = [];
+        
+        modulations.forEach(mod => {
+            const numBits = 1000;
+            let originalBits = generateRandomBits(numBits);
+            
+            // Apply current FEC encoding
+            let encodedBits = originalBits;
+            if (currentFec === 'hamming') {
+                encodedBits = hammingEncode(originalBits);
+            } else if (currentFec === 'bch') {
+                encodedBits = bchEncode(originalBits);
+            } else if (currentFec === 'reed-solomon') {
+                encodedBits = reedSolomonEncode(originalBits);
+            } else if (currentFec === 'ldpc') {
+                encodedBits = ldpcEncode(originalBits);
+            } else if (currentFec === 'polar') {
+                encodedBits = polarEncode(originalBits);
+            } else if (currentFec === 'turbo') {
+                encodedBits = turboEncode(originalBits);
+            }
+            
+            // Modulate
+            const { symbols } = modulate(encodedBits, mod.key);
+            
+            // Calculate PAPR
+            const papr = calculatePAPR(symbols);
+            paprValues.push(papr);
+            labels.push(mod.label);
+        });
         
         // Draw axes
         ctx.strokeStyle = '#333';
@@ -1846,52 +1928,71 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = '#333';
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Técnica de Modulación', width / 2, height - 20);
+        ctx.fillText('Modulación', width / 2, height - 20);
         
         // Title
+        const fecLabel = currentFec === 'none' ? 'Sin FEC' : 
+                         currentFec === 'hamming' ? 'Hamming' :
+                         currentFec === 'bch' ? 'BCH' :
+                         currentFec === 'reed-solomon' ? 'Reed-Solomon' :
+                         currentFec === 'ldpc' ? 'LDPC' :
+                         currentFec === 'polar' ? 'Polar' :
+                         currentFec === 'turbo' ? 'Turbo' : currentFec;
         ctx.font = 'bold 16px Arial';
-        ctx.fillText('PAPR por Técnica de Modulación', width / 2, 30);
+        ctx.fillText(`PAPR por Modulación (FEC: ${fecLabel})`, width / 2, 30);
+        
+        // Find max PAPR for scaling
+        const maxPAPR = Math.max(...paprValues) * 1.1;
         
         // Draw bars
-        const barWidth = (width - 2 * padding) / (modulations.length * 1.5);
-        const maxPAPR = 10;
+        const barWidth = (width - 2 * padding) / (labels.length * 1.5);
         const plotHeight = height - 2 * padding;
         
-        modulations.forEach((mod, i) => {
-            const x = padding + (i + 0.5) * (width - 2 * padding) / modulations.length;
+        labels.forEach((label, i) => {
+            const x = padding + (i + 0.5) * (width - 2 * padding) / labels.length;
             const barHeight = (paprValues[i] / maxPAPR) * plotHeight;
             const y = height - padding - barHeight;
             
+            // Highlight current modulation
+            const isCurrentMod = modulations[i].key === currentModulation;
+            
             // Draw bar with gradient
             const gradient = ctx.createLinearGradient(x, y, x, height - padding);
-            gradient.addColorStop(0, '#667eea');
-            gradient.addColorStop(1, '#764ba2');
+            if (isCurrentMod) {
+                gradient.addColorStop(0, '#f093fb');
+                gradient.addColorStop(1, '#f5576c');
+            } else {
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+            }
             ctx.fillStyle = gradient;
             ctx.fillRect(x - barWidth / 2, y, barWidth, barHeight);
             
             // Draw border
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = isCurrentMod ? '#f5576c' : '#333';
+            ctx.lineWidth = isCurrentMod ? 2 : 1;
             ctx.strokeRect(x - barWidth / 2, y, barWidth, barHeight);
             
             // Draw value on top
             ctx.fillStyle = '#333';
-            ctx.font = '12px Arial';
+            ctx.font = isCurrentMod ? 'bold 12px Arial' : '11px Arial';
             ctx.textAlign = 'center';
             ctx.fillText(`${paprValues[i].toFixed(2)} dB`, x, y - 5);
             
             // Draw label
-            ctx.fillText(mod, x, height - padding + 20);
+            ctx.font = isCurrentMod ? 'bold 11px Arial' : '11px Arial';
+            ctx.fillText(label, x, height - padding + 20);
         });
         
         // Y-axis scale
         ctx.fillStyle = '#666';
         ctx.font = '11px Arial';
         ctx.textAlign = 'right';
-        for (let i = 0; i <= 5; i++) {
-            const value = (i * 2);
+        const numTicks = 5;
+        for (let i = 0; i <= numTicks; i++) {
+            const value = (i * maxPAPR / numTicks);
             const y = height - padding - (value / maxPAPR) * plotHeight;
-            ctx.fillText(`${value}`, padding - 10, y + 4);
+            ctx.fillText(`${value.toFixed(1)}`, padding - 10, y + 4);
             
             // Grid line
             ctx.strokeStyle = '#e0e0e0';
@@ -1903,10 +2004,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Add reference annotation
-        ctx.fillStyle = '#f093fb';
-        ctx.font = '11px Arial';
+        ctx.fillStyle = '#666';
+        ctx.font = '10px Arial';
         ctx.textAlign = 'left';
         ctx.fillText('Ref. IEEE 2022: Hamming = 6.524 dB, Turbo = 8.062 dB', padding, height - padding + 40);
+        ctx.fillText('Barra resaltada = Modulación actual de la simulación', padding, height - padding + 55);
     }
 
     // Draw Spectrum (FFT) chart
@@ -2236,16 +2338,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const errorsFec = compareBits(origBits, decodedBits);
             const berFec = errorsFec / numBits;
             
-            const improvement = berNoFec > 0 ? ((berNoFec - berFec) / berNoFec * 100).toFixed(1) : 0;
-            const gainDB = berNoFec > 0 && berFec > 0 ? (10 * Math.log10(berNoFec / berFec)).toFixed(2) : 'N/A';
+            // Handle edge cases for improvement and gain calculations
+            let improvement = '0.0';
+            let gainDB = 'N/A';
+            
+            if (berNoFec > 0) {
+                if (berFec < berNoFec) {
+                    improvement = ((berNoFec - berFec) / berNoFec * 100).toFixed(1);
+                } else {
+                    improvement = '0.0';
+                }
+                
+                if (berFec > 0 && berFec < berNoFec) {
+                    const gain = 10 * Math.log10(berNoFec / berFec);
+                    if (isFinite(gain) && !isNaN(gain)) {
+                        gainDB = gain.toFixed(2);
+                    }
+                } else if (berFec === 0 && berNoFec > 0) {
+                    gainDB = '∞';
+                }
+            }
             
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${fec.name}</strong></td>
-                <td>${berNoFec.toExponential(2)}</td>
-                <td>${berFec.toExponential(2)}</td>
+                <td>${berNoFec > 0 ? berNoFec.toExponential(2) : '0.00e+0'}</td>
+                <td>${berFec > 0 ? berFec.toExponential(2) : '0.00e+0'}</td>
                 <td>${improvement}%</td>
-                <td>${gainDB} dB</td>
+                <td>${gainDB}${gainDB !== 'N/A' && gainDB !== '∞' ? ' dB' : ''}</td>
                 <td>${fec.overhead}</td>
             `;
             tbody.appendChild(tr);
