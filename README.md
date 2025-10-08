@@ -126,6 +126,157 @@ Haga clic en "Simular" para ejecutar la simulación y ver los resultados.
 ### 5. Exportar Datos
 Use el botón "Exportar Resultados" para guardar los datos en formato JSON.
 
+## Casos de Uso para Exposición
+
+### Caso 1: Comparación de Desempeño entre 5G y 6G en Canal AWGN
+**Objetivo**: Demostrar la mejora en eficiencia espectral de 6G vs 5G en condiciones ideales
+
+**Pasos**:
+1. Configurar:
+   - Tecnología: 5G
+   - Eb/N0: 15 dB
+   - Modulación: QPSK
+   - Canal: AWGN
+   - FEC: LDPC
+2. Hacer clic en "Simular"
+3. Observar el BER Simulado (esperado: ~1e-5)
+4. Cambiar Tecnología a 6G y Modulación a 256-QAM
+5. Hacer clic en "Simular" nuevamente
+6. Comparar los resultados: 6G ofrece mayor throughput con modulación más alta
+
+**Resultados Esperados**:
+- 5G con QPSK: BER ~1e-5, 2 bits/símbolo
+- 6G con 256-QAM: BER ~1e-4, 8 bits/símbolo (4x más capacidad)
+
+### Caso 2: Impacto del Tipo de Canal en el Desempeño
+**Objetivo**: Mostrar cómo diferentes condiciones de propagación afectan el BER
+
+**Pasos**:
+1. Configurar:
+   - Tecnología: 5G Advanced
+   - Eb/N0: 10 dB
+   - Modulación: 64-QAM
+   - FEC: LDPC
+2. Probar con Canal AWGN → Anotar BER
+3. Cambiar a Canal Rayleigh → Anotar BER (mayor degradación)
+4. Cambiar a Canal Rician con K=10 dB → Anotar BER (intermedio)
+5. Hacer clic en "Comparar Canales y FEC" para ver gráfica comparativa
+
+**Resultados Esperados**:
+- AWGN: Mejor desempeño (BER más bajo)
+- Rician: Desempeño medio (depende del factor K)
+- Rayleigh: Peor desempeño (mayor BER debido a desvanecimiento)
+
+### Caso 3: Efectividad de Técnicas de Control de Errores (FEC)
+**Objetivo**: Demostrar la ganancia de codificación con diferentes técnicas FEC
+
+**Pasos**:
+1. Configurar:
+   - Tecnología: 5G
+   - Eb/N0: 8 dB (SNR bajo para ver el efecto FEC)
+   - Modulación: QPSK
+   - Canal: Rayleigh (canal hostil)
+2. Probar con FEC: Ninguna → Anotar BER (~0.1 o más)
+3. Cambiar FEC a Hamming (7,4) → Anotar mejora
+4. Cambiar FEC a LDPC → Anotar mejora significativa
+5. Cambiar FEC a Polar Codes → Anotar mejor desempeño
+6. Hacer clic en "Comparar Canales y FEC" para visualizar
+7. Observar la tabla "Efectividad de Técnicas FEC" con porcentaje de mejora
+
+**Resultados Esperados**:
+- Sin FEC: BER ~0.1 (10% de errores)
+- Hamming: BER ~0.05 (50% de mejora)
+- LDPC: BER ~0.01 (90% de mejora)
+- Polar: BER ~0.005 (95% de mejora)
+
+### Caso 4: Análisis de Constelación bajo Ruido
+**Objetivo**: Visualizar el impacto del ruido en símbolos modulados
+
+**Pasos**:
+1. Configurar:
+   - Modulación: 16-QAM
+   - Eb/N0: 20 dB (alto SNR)
+   - Canal: AWGN
+2. Hacer clic en "Simular"
+3. Ir a pestaña "Gráficas"
+4. Observar el Diagrama de Constelación (símbolos bien definidos)
+5. Reducir Eb/N0 a 5 dB (bajo SNR)
+6. Hacer clic en "Simular"
+7. Observar mayor dispersión en la constelación
+
+**Observaciones**:
+- Alto SNR: Símbolos claros y separados
+- Bajo SNR: Símbolos dispersos, mayor probabilidad de error
+
+### Caso 5: Evolución Tecnológica - Comparación 5G/5G-Advanced/6G
+**Objetivo**: Mostrar la evolución de las tecnologías móviles
+
+**Pasos**:
+1. Configurar:
+   - Eb/N0: 12 dB
+   - Canal: AWGN
+2. Hacer clic en "Comparar Tecnologías"
+3. Observar la tabla comparativa con:
+   - 5G: LDPC + QPSK
+   - 5G Advanced: LDPC + 64-QAM
+   - 6G: Polar Codes + 256-QAM
+4. Analizar métricas:
+   - BER Simulado vs Teórico
+   - Ganancia FEC
+   - Eficiencia (%)
+
+**Análisis**:
+- 5G: Base sólida con buena relación eficiencia/complejidad
+- 5G Advanced: Mayor throughput manteniendo robustez
+- 6G: Máxima eficiencia espectral para aplicaciones futuras
+
+### Caso 6: Optimización de Parámetros para Streaming de Video 4K
+**Objetivo**: Encontrar configuración óptima para alta velocidad de datos
+
+**Pasos**:
+1. Configurar:
+   - Velocidad de Datos: 1000 Mbps (1 Gbps para 4K)
+   - Canal: Rician (entorno urbano con LOS)
+   - Factor K: 10 dB
+2. Probar diferentes combinaciones:
+   - Tecnología: 5G Advanced, Modulación: 64-QAM, FEC: LDPC
+   - Incrementar Eb/N0 hasta conseguir BER < 1e-6
+3. Anotar Eb/N0 mínimo necesario
+4. Repetir con 6G y 256-QAM
+5. Comparar requisitos de potencia
+
+**Criterio de Éxito**:
+- BER < 1e-6 (para garantizar calidad de video)
+- Menor Eb/N0 posible (menor consumo de potencia)
+
+### Caso 7: Simulación de Entorno Urbano Denso (NLOS)
+**Objetivo**: Evaluar desempeño en condiciones adversas típicas de ciudad
+
+**Pasos**:
+1. Configurar:
+   - Canal: Rayleigh (NLOS, sin línea de visión)
+   - Eb/N0: Comenzar en 15 dB
+   - Modulación: Adaptar según calidad del canal
+   - FEC: Activar para compensar
+2. Probar 5G con QPSK + LDPC
+3. Incrementar Eb/N0 si BER > 1e-3
+4. Intentar con modulaciones más altas
+5. Documentar la modulación máxima viable
+
+**Conclusiones**:
+- Canales hostiles requieren mayor Eb/N0
+- FEC es crucial en entornos NLOS
+- Modulación adaptativa es necesaria
+
+## Tips para Presentación Efectiva
+
+1. **Comience con lo simple**: Empiece con BPSK en AWGN para explicar conceptos básicos
+2. **Contraste escenarios**: Muestre AWGN vs Rayleigh para ilustrar impacto del canal
+3. **Demuestre FEC**: Compare con/sin FEC para mostrar beneficios
+4. **Use gráficas**: Las visualizaciones son más impactantes que tablas
+5. **Relate con casos reales**: Conecte con aplicaciones (streaming, IoT, vehículos autónomos)
+6. **Muestre tradeoffs**: Discuta balance entre throughput, BER y complejidad
+
 ## Estructura del Proyecto
 
 ```

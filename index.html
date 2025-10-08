@@ -83,6 +83,7 @@
 
             <button id="simulateBtn">Simular</button>
             <button id="compareBtn" class="secondary-btn">Comparar Tecnologías</button>
+            <button id="compareChannelsBtn" class="secondary-btn">Comparar Canales y FEC</button>
         </section>
 
         <section id="results">
@@ -174,6 +175,16 @@
                             <tr><td colspan="5">Los datos se llenarán después de la simulación</td></tr>
                         </tbody>
                     </table>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Comparación de Tipo de Canal vs BER</h3>
+                    <canvas id="channelComparisonChart" width="800" height="400"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Comparación de Técnicas FEC vs BER</h3>
+                    <canvas id="fecComparisonChart" width="800" height="400"></canvas>
                 </div>
             </div>
 
