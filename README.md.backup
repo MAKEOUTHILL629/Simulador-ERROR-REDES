@@ -531,42 +531,246 @@ Click en **"Exportar Resultados (JSON)"** para:
 3. Cambie a canal Rayleigh y vea degradación
 4. Aumente orden de modulación y observe trade-off
 
-## Casos de Uso para Demostración
+## Casos de Uso Detallados para Exposición y Análisis
 
-El simulador genera automáticamente todas las comparaciones al hacer clic en "🚀 Simular y Comparar Todo". A continuación se describen los análisis principales que se pueden realizar:
+### Caso 1: Evolución Tecnológica - Comparación 5G/5G-A/6G
+**Objetivo**: Demostrar la evolución de las tecnologías móviles y sus mejoras
 
-### 1. Comparación de Generaciones (5G vs 5G-A vs 6G)
-**Configurar**: Eb/N0=10dB, tecnología 5G, 100 Mbps → Ver tabla "Comparación de Tecnologías"
+**Escenario**: Streaming de video 4K en tiempo real
 
-**Resultado**: 6G muestra 3x mejor throughput que 5G Advanced, y 7.5x mejor que 5G base, pero requiere mejor SNR
+**Pasos**:
+1. Configurar condiciones base:
+   - Eb/N0: 10 dB (condiciones urbanas típicas)
+   - Tecnología: 5G (esto configurará automáticamente modulación QPSK, FEC LDPC, canal AWGN)
+   - Velocidad: 100 Mbps
+2. Hacer clic en **"🚀 Simular y Comparar Todo"**
+3. Esperar ~40-60 segundos mientras completa las 5 etapas
+4. Ir a pestaña "Comparación" → Ver tabla "Comparación de Tecnologías (5G, 5G Advanced, 6G)"
 
-### 2. Impacto del Tipo de Canal  
-**Configurar**: 5G Advanced, Eb/N0=8dB, 500 Mbps → Ver "Comparación de Tipo de Canal vs BER"
+**Resultados Esperados**:
+- **5G (LDPC + QPSK)**:
+  - BER: ~10⁻⁵
+  - Throughput: ~95 Mbps
+  - Eficiencia Espectral: 0.095 bits/s/Hz
+  - PAPR: ~7.5 dB
+  
+- **5G Advanced (LDPC + 64-QAM + F-OFDM)**:
+  - BER: ~10⁻⁴ (mayor pero aceptable)
+  - Throughput: ~280 Mbps (3x más)
+  - Eficiencia Espectral: 0.28 bits/s/Hz
+  - PAPR: ~8.2 dB
+  
+- **6G (Polar + 256-QAM + NOMA)**:
+  - BER: ~10⁻³ (requiere mayor Eb/N0 para mejor BER)
+  - Throughput: ~750 Mbps (7.5x más que 5G)
+  - Eficiencia Espectral: 0.75 bits/s/Hz
+  - PAPR: ~9.1 dB
 
-**Resultado**: AWGN (10⁻⁵) vs Rician (10⁻⁴) vs Rayleigh (10⁻²) - Degradación de hasta 1000x por desvanecimiento
+**Análisis**:
+- Cada generación incrementa throughput ~3x
+- Trade-off: Mayor capacidad requiere mejor SNR o tolera mayor BER
+- 6G ofrece máxima eficiencia espectral para aplicaciones de ultra-ancho de banda
+- PAPR aumenta con orden de modulación → Requiere amplificadores más eficientes
 
-### 3. Efectividad de Técnicas FEC
-**Configurar**: 5G, Eb/N0=5dB, 50 Mbps → Ver curvas BER vs Eb/N0
+**Aplicaciones Prácticas**:
+- 5G: Streaming HD, videollamadas, juegos en la nube
+- 5G-A: Streaming 4K, múltiples dispositivos simultáneos, AR/VR
+- 6G: Streaming 8K, hologramas, gemelos digitales, metaverso
 
-**Resultado**: Polar > Turbo > LDPC > RS > BCH > Hamming (ganancia de codificación: 2-15 dB según IEEE 2024)
+### Caso 2: Impacto del Tipo de Canal en el Desempeño
+**Objetivo**: Mostrar cómo diferentes condiciones de propagación afectan dramáticamente el BER
 
-### 4. Análisis de PAPR y Eficiencia Energética
-**Configurar**: 5G, Eb/N0=10dB, 100 Mbps → Ver gráfica PAPR
+**Escenario**: Dispositivo móvil moviéndose entre diferentes entornos
 
-**Resultado**: Hamming ~6.5 dB (IEEE 2022: 6.524 dB, eficiente), Turbo ~8.1 dB (IEEE 2022: 8.062 dB, 20-30% más consumo)
+**Pasos**:
+1. Configurar base común:
+   - Tecnología: 5G Advanced
+   - Eb/N0: 8 dB (condición moderada)
+   - Velocidad: 500 Mbps
+2. Hacer clic en **"🚀 Simular y Comparar Todo"**
+3. Ir a pestaña "Comparación" → Ver "Comparación de Tipo de Canal vs BER"
+4. Observar las diferencias entre AWGN, Rician y Rayleigh
 
-### 5. Escenarios 5G/6G Predefinidos
-**Configurar**: Cualquier tecnología → Ver tabla "Comparación de Escenarios"
+**Resultados Esperados**:
+- **AWGN** (Línea de visión perfecta, sin obstáculos):
+  - BER: ~10⁻⁵
+  - EVM: ~5%
+  - Throughput: 490 Mbps
+  - **Interpretación**: Condiciones ideales, máximo rendimiento
+  
+- **Rician K=10 dB** (Área suburbana, edificios bajos):
+  - BER: ~10⁻⁴ (10x peor)
+  - EVM: ~12%
+  - Throughput: 480 Mbps
+  - **Interpretación**: Degradación moderada, aún aceptable
+  
+- **Rayleigh** (Urbano denso, sin línea de visión):
+  - BER: ~10⁻² (1000x peor que AWGN!)
+  - EVM: ~25%
+  - Throughput: 450 Mbps
+  - **Interpretación**: Degradación severa, requiere adaptación
 
-**Resultado**:
-- **URLLC**: Eb/N0=12dB, QPSK, Polar → BER < 10⁻⁵ (vehículos, cirugía)
-- **eMBB**: Eb/N0=10dB, 64-QAM, LDPC → Max throughput (streaming 4K/8K)
-- **mMTC**: Eb/N0=5dB, BPSK, Turbo → Bajo consumo (IoT, sensores)
+**Análisis Profundo**:
+- El canal es el factor más crítico después de SNR
+- Rayleigh puede degradar BER hasta 1000x vs AWGN
+- EVM refleja la degradación de la constelación
+- Throughput efectivo cae debido a retransmisiones
 
-### 6. Análisis de Constelación y EVM
-**Configurar**: 5G Advanced (64-QAM), probar Eb/N0 de 5, 10, 15 dB → Ver diagrama de constelación
+**Observaciones en Gráfica de Constelación**:
+- AWGN: Puntos bien agrupados, círculos definidos
+- Rician: Dispersión moderada, aún distinguibles
+- Rayleigh: Dispersión severa, símbolos se solapan
 
-**Resultado**: Dispersión aumenta con menor Eb/N0, EVM correlaciona con calidad de señal (< 5% excelente, > 20% degradado)
+**Soluciones Prácticas**:
+1. **Aumentar Eb/N0**: Compensar con más potencia
+2. **FEC más robusto**: Cambiar a Polar o Turbo
+3. **Modulación adaptativa**: Bajar a QPSK en canales hostiles
+4. **Diversidad**: MIMO, beamforming (futuro)
+
+### Caso 3: Efectividad de Técnicas FEC - Análisis Comparativo Completo
+**Objetivo**: Demostrar la ganancia de codificación con diferentes técnicas FEC según IEEE 2024
+
+**Escenario**: Transmisión en condiciones hostiles (entorno urbano denso)
+
+**Pasos**:
+1. Configurar condiciones desafiantes:
+   - Tecnología: 5G
+   - Eb/N0: 5 dB (**SNR bajo intencional** para ver efecto FEC)
+   - Velocidad: 50 Mbps
+2. Hacer clic en **"🚀 Simular y Comparar Todo"**
+3. Ir a pestaña "Comparación" → Ver "Curvas BER vs Eb/N0 - Comparación de Técnicas FEC"
+4. Observar que Polar Codes tienen mejor rendimiento, seguido por Turbo y LDPC
+5. Revisar la tabla "Efectividad de Técnicas FEC" para ver ganancia de codificación en dB
+
+**Resultados Esperados (Eb/N0 = 5 dB, Rayleigh, QPSK)**:
+
+| Técnica FEC | BER Esperado | Ganancia vs Sin FEC | PAPR (dB) | Throughput (Mbps) | Mejora (%) |
+|-------------|--------------|---------------------|-----------|-------------------|------------|
+| **Ninguna** | ~0.15 (15%) | 0 dB (baseline) | 0 dB | 42.5 | 0% (baseline) |
+| **Hamming** | ~0.08 (8%) | ~2.7 dB | 6.5 | 45.0 | ~47% |
+| **BCH** | ~0.05 (5%) | ~4.8 dB | 6.8 | 46.5 | ~67% |
+| **Reed-Solomon** | ~0.03 (3%) | ~7.0 dB | 7.2 | 47.5 | ~80% |
+| **LDPC** | ~0.01 (1%) | ~11.8 dB | 7.5 | 48.5 | ~93% |
+| **Turbo** | ~0.008 (0.8%) | ~12.7 dB | 8.1 | 48.8 | ~95% |
+| **Polar (CA-SCL)** | ~0.005 (0.5%) | ~14.8 dB | 7.8 | 49.2 | ~97% |
+
+**Análisis Detallado**:
+
+**Códigos Clásicos (Hamming, BCH, Reed-Solomon)**:
+- Hamming: Simple, baja ganancia (~3 dB), PAPR bajo (6.5 dB)
+- BCH: Balance entre complejidad y ganancia (~5 dB)
+- Reed-Solomon: Excelente para ráfagas, ~7 dB ganancia
+
+**Códigos Modernos (LDPC, Turbo, Polar)**:
+- LDPC: ~12 dB ganancia, usado en 5G estándar
+- Turbo: ~13 dB ganancia, pero mayor PAPR (8.1 dB)
+- Polar: **Mejor rendimiento** (~15 dB ganancia), PAPR moderado
+
+**Trade-offs Observados**:
+1. **Ganancia vs Complejidad**: Polar > Turbo > LDPC > RS > BCH > Hamming
+2. **PAPR vs Rendimiento**: Turbo tiene mayor PAPR pero excelente corrección
+3. **Overhead vs Throughput**: Mayor code rate = Mejor throughput
+4. **Latencia vs Confiabilidad**: Polar mejor para baja latencia (URLLC)
+
+**Recomendaciones por Aplicación (IEEE 2024)**:
+- **IoT/Sensores**: Hamming (baja complejidad, bajo consumo)
+- **Video Streaming**: LDPC (balance perfecto)
+- **Vehicular (V2X)**: Polar (máxima confiabilidad, baja latencia)
+- **Compatibilidad 4G**: Turbo (legado)
+- **Almacenamiento**: Reed-Solomon (corrección de ráfagas)
+
+**Observación en Tabla de Efectividad FEC**:
+- La tabla se actualiza automáticamente mostrando mejora porcentual
+- Use esto para justificar el overhead introducido por FEC
+
+### Caso 4: Análisis de PAPR y Eficiencia Energética
+**Objetivo**: Demostrar la importancia del PAPR en el diseño de sistemas (IEEE 2022)
+
+**Escenario**: Optimización de consumo energético en dispositivos móviles
+
+**Pasos**:
+1. Configurar:
+   - Eb/N0: 10 dB
+   - Tecnología: 5G
+   - Velocidad: 100 Mbps
+2. Hacer clic en **"🚀 Simular y Comparar Todo"**
+3. Ir a pestaña "Gráficas" → Ver "PAPR por Técnica de Modulación"
+4. Observar valores de PAPR para diferentes técnicas FEC y modulaciones
+5. Revisar que Hamming tiene PAPR ~6.5 dB (referencia IEEE 2022: 6.524 dB)
+6. Comparar con Turbo que tiene PAPR ~8.1 dB (referencia IEEE 2022: 8.062 dB)
+
+**Análisis del PAPR**:
+- **PAPR bajo (< 7 dB)**: Amplificadores eficientes, mayor duración de batería
+- **PAPR alto (> 8 dB)**: Requiere amplificadores lineales costosos, mayor consumo
+
+**Comparación Hamming vs Turbo (IEEE 2022)**:
+- Hamming: PAPR 6.524 dB, BER 1.923%, bajo consumo
+- Turbo: PAPR 8.062 dB, BER 0.5%, alto consumo pero mejor corrección
+
+**Trade-off Crítico**:
+```
+Hamming: Eficiencia Energética ★★★★★, Corrección de Errores ★★☆☆☆
+Turbo:   Eficiencia Energética ★★☆☆☆, Corrección de Errores ★★★★★
+```
+
+**Aplicaciones**:
+- **Dispositivos IoT/Wearables**: Prefieren Hamming (batería limitada)
+- **Estaciones Base**: Pueden usar Turbo (alimentación continua)
+- **Smartphones**: Balance con LDPC o Polar
+
+### Caso 5: Validación de Escenarios 5G/6G
+**Objetivo**: Verificar que los escenarios predefinidos cumplen sus objetivos de diseño
+
+**Pasos**:
+1. Configurar con cualquier tecnología base (por ejemplo, 5G)
+2. Hacer clic en **"🚀 Simular y Comparar Todo"**
+3. Ir a pestaña "Comparación" → Ver tabla "Comparación de Escenarios 5G/6G"
+4. Analizar métricas de cada escenario (URLLC, eMBB, mMTC)
+
+**Comparativa de Escenarios**:
+
+| Aspecto | URLLC | eMBB | mMTC |
+|---------|-------|------|------|
+| **Prioridad** | Confiabilidad | Throughput | Cobertura |
+| **Eb/N0** | 12 dB (alto) | 10 dB (medio) | 5 dB (bajo) |
+| **Modulación** | QPSK (robusta) | 64-QAM (eficiente) | BPSK (simple) |
+| **FEC** | Polar (mejor) | LDPC (balance) | Turbo (legado) |
+| **Canal** | Rician (vehicular) | AWGN (fijo) | Rayleigh (disperso) |
+| **BER Objetivo** | < 10⁻⁹ | < 10⁻⁶ | < 10⁻³ |
+| **Latencia** | < 1 ms | < 10 ms | > 10 s |
+| **Throughput** | ~20 Mbps | ~300 Mbps | ~1 kbps |
+| **Aplicaciones** | V2X, cirugía | Streaming 4K | Sensores, smart meters |
+
+**Observaciones Clave**:
+- **URLLC**: Sacrifica throughput por confiabilidad extrema
+- **eMBB**: Maximiza capacidad asumiendo buenas condiciones
+- **mMTC**: Minimiza consumo para millones de dispositivos
+
+### Caso 6: Análisis de Constelación y EVM
+**Objetivo**: Entender degradación visual de la señal por el canal
+
+**Pasos**:
+1. Configurar:
+   - Tecnología: 5G Advanced (usa 64-QAM)
+   - Eb/N0: Probar diferentes valores (5, 10, 15 dB)
+   - Velocidad: 100 Mbps
+2. Hacer clic en **"🚀 Simular y Comparar Todo"**
+3. Ir a pestaña "Gráficas" → Ver "Diagrama de Constelación con EVM"
+4. Observar:
+   - Puntos azules: Símbolos transmitidos (ideales)
+   - Puntos rosados: Símbolos recibidos (con ruido)
+5. Revisar valor de EVM en pestaña "Resultados"
+
+**Interpretación del EVM**:
+- **EVM < 5%**: Símbolos claros, BER muy bajo
+- **EVM 5-10%**: Dispersión visible, BER moderado
+- **EVM 10-20%**: Símbolos se solapan, BER alto
+- **EVM > 20%**: Constelación colapsada, comunicación degradada
+
+**Aplicación Práctica**:
+- Herramientas de campo usan EVM para diagnóstico
+- EVM alto indica: Canal hostil, interferencia, amplificador no lineal
+- Útil para calibración de equipos
 
 ## Interpretación de Resultados
 
