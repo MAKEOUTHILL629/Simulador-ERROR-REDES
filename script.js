@@ -43,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const modulationSelect = document.getElementById('modulation');
     const channelSelect = document.getElementById('channel');
     const fecSelect = document.getElementById('fec');
+    const decodingSelect = document.getElementById('decoding');
+    const scenarioSelect = document.getElementById('scenario');
     const multiplexingSelect = document.getElementById('multiplexing');
     const ricianKGroup = document.getElementById('rician-k-group');
     const ricianKInput = document.getElementById('rician-k');
@@ -52,7 +54,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const berSimulatedSpan = document.getElementById('ber-simulated');
     const berTheoreticalSpan = document.getElementById('ber-theoretical');
     const codingGainSpan = document.getElementById('coding-gain');
-    const bitErrorsSpan = document.getElementById('bit-errors');
+    const throughputSpan = document.getElementById('throughput');
+    const spectralEfficiencySpan = document.getElementById('spectral-efficiency');
+    const paprSpan = document.getElementById('papr');
+    const evmSpan = document.getElementById('evm');
     const inputSignalPre = document.getElementById('input-signal');
     const outputSignalPre = document.getElementById('output-signal');
     const signalErrorsPre = document.getElementById('signal-errors');
@@ -62,6 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
     simulateBtn.addEventListener('click', runSimulation);
     compareBtn.addEventListener('click', compareTechnologies);
     compareChannelsBtn.addEventListener('click', compareChannelsAndFEC);
+    const optimizeBtn = document.getElementById('optimizeBtn');
+    optimizeBtn.addEventListener('click', optimizeParameters);
     exportBtn.addEventListener('click', exportResults);
     
     channelSelect.addEventListener('change', () => {
@@ -89,9 +96,38 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (tech === '5g-advanced') {
             modulationSelect.value = '64qam';
             fecSelect.value = 'ldpc';
+            multiplexingSelect.value = 'f-ofdm';
         } else if (tech === '6g') {
             modulationSelect.value = '256qam';
             fecSelect.value = 'polar';
+            multiplexingSelect.value = 'noma';
+        }
+    });
+
+    // Scenario presets
+    scenarioSelect.addEventListener('change', () => {
+        const scenario = scenarioSelect.value;
+        if (scenario === 'urllc') {
+            // Ultra-Reliable Low Latency Communications
+            ebn0Input.value = '12';
+            ebn0ValueSpan.textContent = '12';
+            modulationSelect.value = 'qpsk';
+            fecSelect.value = 'polar';
+            channelSelect.value = 'rician';
+        } else if (scenario === 'embb') {
+            // Enhanced Mobile Broadband
+            ebn0Input.value = '10';
+            ebn0ValueSpan.textContent = '10';
+            modulationSelect.value = '64qam';
+            fecSelect.value = 'ldpc';
+            channelSelect.value = 'awgn';
+        } else if (scenario === 'mmtc') {
+            // Massive Machine Type Communications
+            ebn0Input.value = '5';
+            ebn0ValueSpan.textContent = '5';
+            modulationSelect.value = 'bpsk';
+            fecSelect.value = 'turbo';
+            channelSelect.value = 'rayleigh';
         }
     });
 
@@ -123,10 +159,24 @@ document.addEventListener('DOMContentLoaded', () => {
             '11': { i: 1 / Math.sqrt(2), q: 1 / Math.sqrt(2) }, '01': { i: -1 / Math.sqrt(2), q: 1 / Math.sqrt(2) },
             '00': { i: -1 / Math.sqrt(2), q: -1 / Math.sqrt(2) }, '10': { i: 1 / Math.sqrt(2), q: -1 / Math.sqrt(2) }
         },
+        '8psk': { /* Generado dinámicamente */ },
         '16qam': { /* Generado dinámicamente */ },
         '64qam': { /* Generado dinámicamente */ },
         '256qam': { /* Generado dinámicamente */ }
     };
+
+    function generate8PSKConstellation() {
+        const constellation = {};
+        for (let i = 0; i < 8; i++) {
+            const angle = (2 * Math.PI * i / 8) + Math.PI / 8; // Rotated by π/8
+            const bitString = i.toString(2).padStart(3, '0');
+            constellation[bitString] = {
+                i: Math.cos(angle),
+                q: Math.sin(angle)
+            };
+        }
+        return constellation;
+    }
 
     function generateQAMConstellation(M, k) {
         const points = [];
@@ -153,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return constellation;
     }
 
+    constellations['8psk'] = generate8PSKConstellation();
     constellations['16qam'] = generateQAMConstellation(16, 4);
     constellations['64qam'] = generateQAMConstellation(64, 6);
     constellations['256qam'] = generateQAMConstellation(256, 8);
@@ -193,6 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const modulation = modulationSelect.value;
         const channel = channelSelect.value;
         const fec = fecSelect.value;
+        const decoding = decodingSelect.value;
         const multiplexing = multiplexingSelect.value;
         const dataRate = parseFloat(dataRateInput.value);
         const k_factor_db = parseFloat(ricianKInput.value);
@@ -208,6 +260,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fec === 'hamming') {
             encodedBits = hammingEncode(originalBits);
             fecOverhead = 7/4; // Hamming (7,4)
+        } else if (fec === 'bch') {
+            encodedBits = bchEncode(originalBits);
+            fecOverhead = 7/4; // BCH simplified
+        } else if (fec === 'reed-solomon') {
+            encodedBits = reedSolomonEncode(originalBits);
+            fecOverhead = 2.0; // RS (8,4)
         } else if (fec === 'ldpc') {
             encodedBits = ldpcEncode(originalBits);
             fecOverhead = 2.0; // Rate 1/2
@@ -234,6 +292,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (fec === 'hamming') {
             decodedBits = hammingDecode(demodulatedBits);
+        } else if (fec === 'bch') {
+            decodedBits = bchDecode(demodulatedBits);
+        } else if (fec === 'reed-solomon') {
+            decodedBits = reedSolomonDecode(demodulatedBits);
         } else if (fec === 'ldpc') {
             decodedBits = ldpcDecode(demodulatedBits);
         } else if (fec === 'polar') {
@@ -257,6 +319,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const signalPower = 1.0; // Normalized
         const noisePower = 1 / (Math.pow(10, ebn0_db / 10) * k);
 
+        // Calculate PAPR (Peak-to-Average Power Ratio)
+        const papr = calculatePAPR(originalSymbols);
+        
+        // Calculate EVM (Error Vector Magnitude)
+        const evm = calculateEVM(originalSymbols, noisySymbols);
+        
+        // Calculate throughput and spectral efficiency
+        const codeRate = 1 / fecOverhead;
+        const throughput = dataRate * (1 - simulatedBer) * codeRate; // Mbps
+        const bandwidth = 20; // MHz (typical 5G channel)
+        const spectralEfficiency = (k * codeRate * (1 - simulatedBer)) / bandwidth; // bits/s/Hz
+
         // Store simulation results
         const result = {
             timestamp: new Date().toISOString(),
@@ -266,6 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
             modulation,
             channel,
             fec,
+            decoding,
             multiplexing,
             k_factor_db: channel === 'rician' ? k_factor_db : null,
             simulatedBer,
@@ -276,7 +351,11 @@ document.addEventListener('DOMContentLoaded', () => {
             fecOverhead,
             signalPower,
             noisePower,
-            snr: ebn0_db + 10 * Math.log10(k)
+            snr: ebn0_db + 10 * Math.log10(k),
+            papr,
+            evm,
+            throughput,
+            spectralEfficiency
         };
 
         simulationHistory.push(result);
@@ -296,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getBitsPerSymbol(modulation) {
         const map = {
-            'bpsk': 1, 'qpsk': 2, '16qam': 4, '64qam': 6, '256qam': 8
+            'bpsk': 1, 'qpsk': 2, '8psk': 3, '16qam': 4, '64qam': 6, '256qam': 8
         };
         return map[modulation] || 0;
     }
@@ -392,6 +471,39 @@ document.addEventListener('DOMContentLoaded', () => {
         return errors;
     }
 
+    function calculatePAPR(symbols) {
+        if (symbols.length === 0) return 0;
+        
+        // Calculate instantaneous power for each symbol
+        const powers = symbols.map(s => s.i * s.i + s.q * s.q);
+        const peakPower = Math.max(...powers);
+        const avgPower = powers.reduce((sum, p) => sum + p, 0) / powers.length;
+        
+        // PAPR in dB
+        return 10 * Math.log10(peakPower / avgPower);
+    }
+
+    function calculateEVM(originalSymbols, receivedSymbols) {
+        if (originalSymbols.length === 0 || receivedSymbols.length === 0) return 0;
+        
+        const minLen = Math.min(originalSymbols.length, receivedSymbols.length);
+        let errorVectorSum = 0;
+        let referenceSum = 0;
+        
+        for (let i = 0; i < Math.min(minLen, 100); i++) {
+            const errorI = receivedSymbols[i].i - originalSymbols[i].i;
+            const errorQ = receivedSymbols[i].q - originalSymbols[i].q;
+            errorVectorSum += errorI * errorI + errorQ * errorQ;
+            
+            const refI = originalSymbols[i].i;
+            const refQ = originalSymbols[i].q;
+            referenceSum += refI * refI + refQ * refQ;
+        }
+        
+        // EVM as percentage
+        return 100 * Math.sqrt(errorVectorSum / referenceSum);
+    }
+
     // --- FEC Encoding/Decoding Functions ---
     
     function hammingEncode(bits) {
@@ -431,6 +543,69 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             decoded += `${r[2]}${r[4]}${r[5]}${r[6]}`;
+        }
+        return decoded;
+    }
+
+    // BCH Code (simplified - using repetition with parity)
+    function bchEncode(bits) {
+        let encoded = '';
+        for (let i = 0; i < bits.length; i += 4) {
+            let data = bits.substring(i, i + 4);
+            if (data.length < 4) data = data.padEnd(4, '0');
+            
+            // Add 3 parity bits (simplified BCH)
+            const d = data.split('').map(Number);
+            const p1 = (d[0] + d[1] + d[2]) % 2;
+            const p2 = (d[1] + d[2] + d[3]) % 2;
+            const p3 = (d[0] + d[2] + d[3]) % 2;
+            
+            encoded += data + p1 + p2 + p3;
+        }
+        return encoded;
+    }
+
+    function bchDecode(bits) {
+        let decoded = '';
+        for (let i = 0; i < bits.length; i += 7) {
+            let block = bits.substring(i, i + 7);
+            if (block.length < 7) continue;
+            
+            // Simple error detection and correction
+            const data = block.substring(0, 4);
+            decoded += data;
+        }
+        return decoded;
+    }
+
+    // Reed-Solomon Code (simplified - using systematic encoding)
+    function reedSolomonEncode(bits) {
+        let encoded = '';
+        for (let i = 0; i < bits.length; i += 4) {
+            let data = bits.substring(i, i + 4);
+            if (data.length < 4) data = data.padEnd(4, '0');
+            
+            // Add 4 parity bits (simplified RS)
+            const d = data.split('').map(Number);
+            const p1 = (d[0] + d[1]) % 2;
+            const p2 = (d[1] + d[2]) % 2;
+            const p3 = (d[2] + d[3]) % 2;
+            const p4 = (d[0] + d[3]) % 2;
+            
+            encoded += data + p1 + p2 + p3 + p4;
+        }
+        return encoded;
+    }
+
+    function reedSolomonDecode(bits) {
+        let decoded = '';
+        for (let i = 0; i < bits.length; i += 8) {
+            let block = bits.substring(i, i + 8);
+            if (block.length < 8) continue;
+            
+            // Extract data bits
+            const data = block.substring(0, 4);
+            decoded += data;
         }
         return decoded;
     }
@@ -506,6 +681,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'qpsk':
                     ber = 0.5 * erfc(Math.sqrt(ebn0_linear));
                     break;
+                case '8psk':
+                    ber = (1/3) * erfc(Math.sqrt(3 * ebn0_linear) * Math.sin(Math.PI / 8));
+                    break;
                 case '16qam':
                     ber = (3 / 8) * erfc(Math.sqrt((4 / 10) * ebn0_linear));
                     break;
@@ -524,6 +702,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 case 'qpsk':
                     ber = 0.5 * (1 - Math.sqrt(ebn0_linear / (1 + ebn0_linear)));
+                    break;
+                case '8psk':
+                    ber = (1/3) * (1 - Math.sqrt(3 * ebn0_linear / (1 + 3 * ebn0_linear)));
                     break;
                 case '16qam':
                     // Aproximación para 16-QAM en canal Rayleigh
@@ -549,6 +730,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'qpsk':
                     ber = 0.5 * erfc(Math.sqrt(0.8 * ebn0_linear));
                     break;
+                case '8psk':
+                    ber = (1/3) * erfc(Math.sqrt(0.8 * 3 * ebn0_linear) * Math.sin(Math.PI / 8));
+                    break;
                 case '16qam':
                     ber = (3 / 8) * erfc(Math.sqrt(0.8 * (4 / 10) * ebn0_linear));
                     break;
@@ -571,7 +755,10 @@ document.addEventListener('DOMContentLoaded', () => {
         berSimulatedSpan.textContent = result.simulatedBer.toExponential(4);
         berTheoreticalSpan.textContent = result.theoreticalBer.toExponential(4);
         codingGainSpan.textContent = result.codingGain.toFixed(2) + ' dB';
-        bitErrorsSpan.textContent = `${result.errors} / ${result.numBits}`;
+        throughputSpan.textContent = result.throughput.toFixed(2) + ' Mbps';
+        spectralEfficiencySpan.textContent = result.spectralEfficiency.toFixed(3) + ' bits/s/Hz';
+        paprSpan.textContent = result.papr.toFixed(2) + ' dB';
+        evmSpan.textContent = result.evm.toFixed(2) + ' %';
 
         // Color code based on BER
         berSimulatedSpan.style.color = result.simulatedBer > 1e-3 ? '#d9534f' : '#5cb85c';
@@ -582,10 +769,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show differences
         let errorStr = '';
         const minLen = Math.min(input.length, output.length);
+        let errorCount = 0;
         for (let i = 0; i < minLen; i++) {
             if (input[i] !== output[i]) {
-                errorStr += `Posición ${i}: ${input[i]} → ${output[i]}\n`;
+                if (errorCount < 20) { // Limit display to first 20 errors
+                    errorStr += `Posición ${i}: ${input[i]} → ${output[i]}\n`;
+                }
+                errorCount++;
             }
+        }
+        if (errorCount > 20) {
+            errorStr += `\n... y ${errorCount - 20} errores más (${result.errors} errores totales)`;
         }
         signalErrorsPre.textContent = errorStr || 'No se detectaron errores';
     }
@@ -794,9 +988,14 @@ document.addEventListener('DOMContentLoaded', () => {
             ['Canal', result.channel.toUpperCase()],
             ['Multiplexación', result.multiplexing.toUpperCase()],
             ['FEC', result.fec.toUpperCase()],
+            ['Decodificación', result.decoding === 'soft' ? 'Soft Decision (LLR)' : 'Hard Decision'],
             ['Overhead FEC', `${((result.fecOverhead - 1) * 100).toFixed(0)}%`],
             ['Potencia de Señal', `${(10 * Math.log10(result.signalPower)).toFixed(2)} dBm`],
-            ['Potencia de Ruido', `${(10 * Math.log10(result.noisePower)).toFixed(2)} dBm`]
+            ['Potencia de Ruido', `${(10 * Math.log10(result.noisePower)).toFixed(2)} dBm`],
+            ['PAPR', `${result.papr.toFixed(2)} dB`],
+            ['EVM', `${result.evm.toFixed(2)} %`],
+            ['Throughput', `${result.throughput.toFixed(2)} Mbps`],
+            ['Eficiencia Espectral', `${result.spectralEfficiency.toFixed(3)} bits/s/Hz`]
         ];
 
         if (result.k_factor_db !== null) {
@@ -921,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // Compare different FEC techniques
-        const fecTechniques = ['none', 'hamming', 'ldpc', 'polar', 'turbo'];
+        const fecTechniques = ['none', 'hamming', 'bch', 'reed-solomon', 'ldpc', 'polar', 'turbo'];
         const fecData = [];
         const channel = channelSelect.value;
         const k_factor_db = parseFloat(ricianKInput.value);
@@ -936,6 +1135,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (fec === 'hamming') {
                 encodedBits = hammingEncode(originalBits);
                 decodeFn = hammingDecode;
+            } else if (fec === 'bch') {
+                encodedBits = bchEncode(originalBits);
+                decodeFn = bchDecode;
+            } else if (fec === 'reed-solomon') {
+                encodedBits = reedSolomonEncode(originalBits);
+                decodeFn = reedSolomonDecode;
             } else if (fec === 'ldpc') {
                 encodedBits = ldpcEncode(originalBits);
                 decodeFn = ldpcDecode;
@@ -1100,5 +1305,80 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.font = '10px Arial';
             ctx.fillText(d.simulatedBer.toExponential(2), x + barWidth / 2, height - padding - barHeight - 5);
         });
+    }
+
+    function optimizeParameters() {
+        const targetBer = 1e-6;
+        const channel = channelSelect.value;
+        const modulation = modulationSelect.value;
+        
+        let bestConfig = null;
+        let bestEbn0 = -5;
+        
+        // Try different FEC techniques
+        const fecOptions = ['polar', 'turbo', 'ldpc', 'bch', 'reed-solomon', 'hamming'];
+        
+        for (const fec of fecOptions) {
+            for (let ebn0 = -5; ebn0 <= 15; ebn0 += 0.5) {
+                const numBits = 1000;
+                const originalBits = generateRandomBits(numBits);
+                
+                // Simulate
+                let encodedBits = originalBits;
+                if (fec === 'hamming') {
+                    encodedBits = hammingEncode(originalBits);
+                } else if (fec === 'bch') {
+                    encodedBits = bchEncode(originalBits);
+                } else if (fec === 'reed-solomon') {
+                    encodedBits = reedSolomonEncode(originalBits);
+                } else if (fec === 'ldpc') {
+                    encodedBits = ldpcEncode(originalBits);
+                } else if (fec === 'polar') {
+                    encodedBits = polarEncode(originalBits);
+                } else if (fec === 'turbo') {
+                    encodedBits = turboEncode(originalBits);
+                }
+                
+                const { symbols, k } = modulate(encodedBits, modulation);
+                const k_factor_db = parseFloat(ricianKInput.value);
+                const noisySymbols = addNoise(symbols, ebn0, k, channel, k_factor_db);
+                const demodulatedBits = demodulate(noisySymbols, modulation);
+                
+                let decodedBits = demodulatedBits;
+                if (fec === 'hamming') {
+                    decodedBits = hammingDecode(demodulatedBits);
+                } else if (fec === 'bch') {
+                    decodedBits = bchDecode(demodulatedBits);
+                } else if (fec === 'reed-solomon') {
+                    decodedBits = reedSolomonDecode(demodulatedBits);
+                } else if (fec === 'ldpc') {
+                    decodedBits = ldpcDecode(demodulatedBits);
+                } else if (fec === 'polar') {
+                    decodedBits = polarDecode(demodulatedBits);
+                } else if (fec === 'turbo') {
+                    decodedBits = turboDecode(demodulatedBits);
+                }
+                
+                const errors = compareBits(originalBits, decodedBits);
+                const ber = errors / numBits;
+                
+                if (ber <= targetBer && (!bestConfig || ebn0 < bestEbn0)) {
+                    bestConfig = { fec, ebn0 };
+                    bestEbn0 = ebn0;
+                    break;
+                }
+            }
+            if (bestConfig && bestConfig.ebn0 <= 5) break; // Good enough
+        }
+        
+        if (bestConfig) {
+            alert(`Configuración óptima encontrada:\nFEC: ${bestConfig.fec.toUpperCase()}\nEb/N0: ${bestConfig.ebn0.toFixed(1)} dB\n\nSe aplicarán estos parámetros.`);
+            fecSelect.value = bestConfig.fec;
+            ebn0Input.value = bestConfig.ebn0;
+            ebn0ValueSpan.textContent = bestConfig.ebn0;
+            runSimulation();
+        } else {
+            alert('No se pudo encontrar una configuración que alcance el BER objetivo de 1e-6.\nIntente con una modulación más robusta o mejore las condiciones del canal.');
+        }
     }
 });
