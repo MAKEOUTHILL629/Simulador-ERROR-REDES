@@ -24,45 +24,12 @@ function erfc(x) {
     return 1 - (sign * y);
 }
 
-/**
- * Helper function to make canvas responsive
- * @param {string} canvasId - ID of the canvas element
- */
-function makeCanvasResponsive(canvasId) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    
-    const container = canvas.parentElement;
-    const containerWidth = container.offsetWidth - 32; // Account for padding
-    const aspectRatio = canvas.height / canvas.width;
-    
-    canvas.width = Math.min(containerWidth, 800);
-    canvas.height = canvas.width * aspectRatio;
-}
-
 // Variables globales para gráficas
 let berChart = null;
 let constellationChart = null;
 let simulationHistory = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Make all canvases responsive on load and resize
-    const canvasIds = ['berChart', 'constellationChart', 'paprChart', 'spectrumChart', 'throughputChart', 'channelComparisonChart', 'fecComparisonChart'];
-    
-    function resizeAllCanvases() {
-        canvasIds.forEach(id => makeCanvasResponsive(id));
-    }
-    
-    // Initial resize
-    resizeAllCanvases();
-    
-    // Resize on window resize with debouncing
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(resizeAllCanvases, 250);
-    });
-    
     // --- Elementos del DOM ---
     const simulateBtn = document.getElementById('simulateBtn');
     const compareBtn = document.getElementById('compareBtn');
@@ -82,22 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const ricianKGroup = document.getElementById('rician-k-group');
     const ricianKInput = document.getElementById('rician-k');
     const ricianKValueSpan = document.getElementById('rician-k-value');
-    
-    // Wrap all tables in a responsive wrapper
-    function wrapTablesForResponsive() {
-        const tables = document.querySelectorAll('table');
-        tables.forEach(table => {
-            if (!table.parentElement.classList.contains('table-wrapper')) {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'table-wrapper';
-                table.parentNode.insertBefore(wrapper, table);
-                wrapper.appendChild(table);
-            }
-        });
-    }
-    
-    // Wrap tables on load
-    wrapTablesForResponsive();
     
     // Results elements
     const berSimulatedSpan = document.getElementById('ber-simulated');
